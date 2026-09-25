@@ -18,10 +18,6 @@ constexpr uint32_t IPC_PPCMSG = IOS_IPC_BASE + 0x00;
 constexpr uint32_t IPC_PPCCTRL = IOS_IPC_BASE + 0x04;
 constexpr uint32_t IPC_ARMMSG = IOS_IPC_BASE + 0x08;
 
-constexpr uint32_t IPC_X1 = 1u << 0;
-constexpr uint32_t IPC_Y2 = 1u << 1;
-constexpr uint32_t IPC_Y1 = 1u << 2;
-
 constexpr uint32_t FD_DI = 1;
 constexpr uint32_t FD_FS = 2;
 constexpr uint32_t FD_ES = 3;
@@ -274,14 +270,7 @@ void IOSHLE::CompleteRequest(uint32_t request_address) {
     memory_.Hollywood().Write32(IPC_ARMMSG, request_address);
     const uint32_t control = memory_.Hollywood().Read32(IPC_PPCCTRL);
 
-    // Clear X1 and signal Y1 (reply available). Y2 acknowledges the command.
-    memory_.Hollywood().Write32(
-        IPC_PPCCTRL,
-        (control & ~(IPC_X1)) | IPC_Y2 | IPC_Y1);
-
-    // IPC reply is Hollywood interrupt 30.
-    if (control & (1u << 4))
-        memory_.Hollywood().RaisePpcInterrupt(30);
+    memory_.Hollywood().CompleteIpcReply();
 }
 
 bool IOSHLE::Tick() {
