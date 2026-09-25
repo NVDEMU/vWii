@@ -44,6 +44,13 @@ constexpr uint32_t RotateLeft(uint32_t value, unsigned shift) {
     return (value << shift) | (value >> ((32 - shift) & 31));
 }
 
+constexpr uint32_t ByteSwap32(uint32_t value) {
+    return (value >> 24) |
+           ((value >> 8) & 0x0000FF00u) |
+           ((value << 8) & 0x00FF0000u) |
+           (value << 24);
+}
+
 uint32_t Mask32(unsigned mb, unsigned me) {
     uint32_t mask = 0;
     for (unsigned bit = mb;; bit = (bit + 1) & 31) {
@@ -550,7 +557,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         case 534: { // LWBRX
             const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
             const uint32_t value = memory_.Read32(address);
-            gpr_[RD(instruction)] = std::byteswap(value);
+            gpr_[RD(instruction)] = ByteSwap32(value);
             break;
         }
 
@@ -570,7 +577,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
 
         case 662: { // STWBRX
             const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
-            memory_.Write32(address, std::byteswap(gpr_[RS(instruction)]));
+            memory_.Write32(address, ByteSwap32(gpr_[RS(instruction)]));
             break;
         }
 
