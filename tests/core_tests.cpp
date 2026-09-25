@@ -72,8 +72,8 @@ int main() {
 
     // LWARX/STWCX. reservation semantics.
     emulator.Memory().Write32(0x80001100, 0xAABBCCDD);
-    emulator.Memory().Write32(0x80003000, 0x7C601028); // lwarx r3,0,r6
-    emulator.Memory().Write32(0x80003004, 0x7C60112D); // stwcx. r3,0,r2
+    emulator.Memory().Write32(0x80003000, 0x7C660028); // lwarx r3,0,r6
+    emulator.Memory().Write32(0x80003004, 0x7C62012D); // stwcx. r3,0,r2
     emulator.CPU().Reset(0x80003000);
     emulator.CPU().SetGPR(6, 0x80001100);
     emulator.CPU().SetGPR(2, 0x80001100);
