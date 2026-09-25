@@ -5,6 +5,7 @@
 #include "cpu/powerpc.h"
 #include "disc/disc_image.h"
 #include "ios/ios_hle.h"
+#include "filesystem/wii_fst.h"
 #include "memory/memory.h"
 #include "system/scheduler.h"
 
@@ -34,6 +35,7 @@ public:
     [[nodiscard]] memory::Memory& Memory() { return memory_; }
     [[nodiscard]] ios::IOSHLE& IOS() { return ios_; }
     [[nodiscard]] system::Scheduler& Scheduler() { return scheduler_; }
+    [[nodiscard]] filesystem::WiiFST& GameFST() { return game_fst_; }
 
     [[nodiscard]] bool IsInitialized() const { return initialized_; }
     [[nodiscard]] bool HasLoadedImage() const { return loaded_image_; }
@@ -46,6 +48,7 @@ private:
     system::Scheduler scheduler_;
 
     std::unique_ptr<disc::DiscImage> disc_;
+    filesystem::WiiFST game_fst_;
 
     bool initialized_{};
     bool loaded_image_{};
