@@ -130,7 +130,13 @@ Guitar: 1/2/3/4/5 = green/red/yellow/blue/orange frets, G/H = strum up/down, T/Y
 
 Drums: 6/7/8/9/0 = drum pads, N = kick pedal.
 
-Turntable: F/G/H = green/red/blue, J/L = deck movement.
+Turntable: F/G/H = green/red/blue, J/L = deck movement, Comma/Period = crossfader.
+
+UDraw / Drawsome tablets: Comma/Period and Semicolon/Slash move the pen, Apostrophe presses the pen, Right Bracket = A, Left Bracket = B.
+
+TaTaCon: V = hit, B = rim.
+
+Shinkansen: R/F = throttle up/down, G = brake, H = horn.
 
 Motion simulation: I/K = pitch up/down, J/L = yaw left/right, U/O = roll left/right, T/G = X acceleration, R/F = Y acceleration, Y/H = Z acceleration, Q = shake.
 
