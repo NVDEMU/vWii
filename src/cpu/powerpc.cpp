@@ -703,6 +703,80 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         }
 
 
+        case 535: { // LFSX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const float value = std::bit_cast<float>(memory_.Read32(address));
+            fpr_[RD(instruction)] = MakeFPR(value);
+            break;
+        }
+
+        case 567: { // LFSUX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const float value = std::bit_cast<float>(memory_.Read32(address));
+            fpr_[RD(instruction)] = MakeFPR(value);
+            gpr_[ra] = address;
+            break;
+        }
+
+        case 599: { // LFDX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            fpr_[RD(instruction)] =
+                (static_cast<uint64_t>(memory_.Read32(address)) << 32) |
+                memory_.Read32(address + 4);
+            break;
+        }
+
+        case 631: { // LFDUX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            fpr_[RD(instruction)] =
+                (static_cast<uint64_t>(memory_.Read32(address)) << 32) |
+                memory_.Read32(address + 4);
+            gpr_[ra] = address;
+            break;
+        }
+
+        case 663: { // STFSX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const double value = FPRDouble(fpr_[RS(instruction)]);
+            memory_.Write32(
+                address,
+                std::bit_cast<uint32_t>(static_cast<float>(value)));
+            break;
+        }
+
+        case 695: { // STFSUX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const double value = FPRDouble(fpr_[RS(instruction)]);
+            memory_.Write32(
+                address,
+                std::bit_cast<uint32_t>(static_cast<float>(value)));
+            gpr_[ra] = address;
+            break;
+        }
+
+        case 727: { // STFDX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const uint64_t value = fpr_[RS(instruction)];
+            memory_.Write32(address, static_cast<uint32_t>(value >> 32));
+            memory_.Write32(address + 4, static_cast<uint32_t>(value));
+            break;
+        }
+
+        case 759: { // STFDUX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const uint64_t value = fpr_[RS(instruction)];
+            memory_.Write32(address, static_cast<uint32_t>(value >> 32));
+            memory_.Write32(address + 4, static_cast<uint32_t>(value));
+            gpr_[ra] = address;
+            break;
+        }
+
+        case 983: { // STFIWX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            memory_.Write32(address, static_cast<uint32_t>(fpr_[RS(instruction)]));
+            break;
+        }
+
         case 150: { // STWCX.
             const uint32_t address = ReadBaseRegister(ra) +
                                      ReadBaseRegister(rb);
