@@ -49,6 +49,7 @@ add_library(vwii_core
     src/disc/disc_image.cpp
     src/hardware/hollywood.cpp
     src/system/scheduler.cpp
+    src/ios/ios_hle.cpp
     src/video/video_backend.cpp
 )
 
