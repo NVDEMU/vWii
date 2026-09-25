@@ -57,11 +57,17 @@ std::string ReadCString(const vwii::memory::Memory& memory, uint32_t address,
 } // namespace
 
 IOSHLE::IOSHLE(memory::Memory& memory)
-    : memory_(memory) {
+    : memory_(memory), nand_(std::make_unique<NandFS>(memory)) {
     Reset();
 }
 
+void IOSHLE::SetNandRoot(const std::string& root) {
+    nand_->SetRoot(root);
+}
+
 void IOSHLE::Reset() {
+    nand_->Reset();
+
     for (auto& fd : fds_)
         fd = {};
 
@@ -107,29 +113,42 @@ uint32_t IOSHLE::OpenDevice(const std::string& path) {
     if (path == "/dev/stm/eventhook")
         return FD_STM;
 
-    // IOS uses negative errno-style values for unsupported resources.
+    if (!path.empty() && path.front() == '/' && nand_)
+        return static_cast<uint32_t>(nand_->Open(path, 1));
+
     return ErrorNoSuchDevice;
 }
 
 uint32_t IOSHLE::Open(const std::array<uint32_t, 5>& args) {
     const std::string path = ReadCString(memory_, args[0]);
 
-    uint32_t fd = OpenDevice(path);
+    const uint32_t fd = OpenDevice(path);
     if (fd < fds_.size())
         fds_[fd].position = 0;
-
     return fd;
 }
 
 uint32_t IOSHLE::Close(uint32_t fd) {
-    if (fd >= fds_.size() || !fds_[fd].used)
+    if (fd >= fds_.size())
+        return ErrorInvalidArgument;
+
+    if (fd >= 8 && nand_)
+        return static_cast<uint32_t>(nand_->Close(fd));
+
+    if (!fds_[fd].used)
         return ErrorInvalidArgument;
 
     return 0;
 }
 
 uint32_t IOSHLE::Read(uint32_t fd, const std::array<uint32_t, 5>& args) {
-    if (fd >= fds_.size() || !fds_[fd].used)
+    if (fd >= fds_.size())
+        return ErrorInvalidArgument;
+
+    if (fd >= 8 && nand_)
+        return static_cast<uint32_t>(nand_->Read(fd, args[0], args[1]));
+
+    if (!fds_[fd].used)
         return ErrorInvalidArgument;
 
     const uint32_t address = args[0];
@@ -152,7 +171,13 @@ uint32_t IOSHLE::Read(uint32_t fd, const std::array<uint32_t, 5>& args) {
 }
 
 uint32_t IOSHLE::Write(uint32_t fd, const std::array<uint32_t, 5>& args) {
-    if (fd >= fds_.size() || !fds_[fd].used)
+    if (fd >= fds_.size())
+        return ErrorInvalidArgument;
+
+    if (fd >= 8 && nand_)
+        return static_cast<uint32_t>(nand_->Write(fd, args[0], args[1]));
+
+    if (!fds_[fd].used)
         return ErrorInvalidArgument;
 
     (void)args;
@@ -160,7 +185,13 @@ uint32_t IOSHLE::Write(uint32_t fd, const std::array<uint32_t, 5>& args) {
 }
 
 uint32_t IOSHLE::Seek(uint32_t fd, const std::array<uint32_t, 5>& args) {
-    if (fd >= fds_.size() || !fds_[fd].used)
+    if (fd >= fds_.size())
+        return ErrorInvalidArgument;
+
+    if (fd >= 8 && nand_)
+        return static_cast<uint32_t>(nand_->Seek(fd, static_cast<int32_t>(args[0]), args[1]));
+
+    if (!fds_[fd].used)
         return ErrorInvalidArgument;
 
     const int32_t offset = static_cast<int32_t>(args[0]);
@@ -257,6 +288,40 @@ uint32_t IOSHLE::Ioctl(uint32_t fd, const std::array<uint32_t, 5>& args) {
 
     if (fd == FD_DI)
         return HandleDI(ioctl, in_address, in_size, out_address, out_size);
+
+    if (fd == FD_FS && nand_) {
+        switch (ioctl) {
+        case 3: { // CreateDir
+            return static_cast<uint32_t>(
+                nand_->CreateDirectory(ReadCString(memory_, in_address)));
+        }
+
+        case 4: { // ReadDir
+            return static_cast<uint32_t>(
+                nand_->ReadDirectory(ReadCString(memory_, in_address),
+                                      out_address, out_size));
+        }
+
+        case 7: // Delete
+            return static_cast<uint32_t>(
+                nand_->Remove(ReadCString(memory_, in_address)));
+
+        case 8: { // Rename
+            const std::string source = ReadCString(memory_, in_address);
+            const std::string destination =
+                ReadCString(memory_, in_address + 0x40);
+            return static_cast<uint32_t>(
+                nand_->Rename(source, destination));
+        }
+
+        case 9: // CreateFile
+            return static_cast<uint32_t>(
+                nand_->CreateFile(ReadCString(memory_, in_address)));
+
+        default:
+            return 0;
+        }
+    }
 
     return 0;
 }
