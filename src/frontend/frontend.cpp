@@ -422,6 +422,24 @@ void Frontend::HandleLibraryClick(float x, float y, int clicks) {
         }
     }
 
+    const auto& recent = impl_->library.Recent();
+    if (y >= 586.0f && y < 674.0f &&
+        !recent.empty() && x >= 252.0f) {
+        const std::size_t recent_index =
+            static_cast<std::size_t>((x - 252.0f) / 220.0f);
+        if (recent_index < recent.size() &&
+            recent_index < 4) {
+            if (clicks >= 1) {
+                impl_->launch_file =
+                    recent[recent_index].string();
+                impl_->library.MarkRecent(recent[recent_index]);
+                impl_->status_message =
+                    "Launching " + recent[recent_index].stem().string() + "...";
+            }
+            return;
+        }
+    }
+
     constexpr float card_width = 294.0f;
     constexpr float card_height = 124.0f;
     constexpr float gap = 18.0f;
