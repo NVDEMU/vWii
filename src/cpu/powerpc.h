@@ -62,6 +62,7 @@ private:
     uint32_t srr0_{};
     uint32_t srr1_{};
     uint32_t fpscr_{};
+    uint64_t timebase_{};
 
     bool halted_{};
 };
