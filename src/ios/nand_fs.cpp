@@ -86,8 +86,11 @@ int NandFS::Open(const std::string& path, uint32_t mode) {
     if (resolved.empty())
         return ErrorInvalidArgument;
 
-    const bool writable = (mode & 2U) != 0;
-    const bool readable = (mode & 1U) != 0 || !writable;
+    const bool readable = mode == 0 || mode == 2;
+    const bool writable = mode == 1 || mode == 2;
+
+    if (!readable && !writable)
+        return ErrorInvalidArgument;
 
     if (std::filesystem::is_directory(resolved))
         return ErrorInvalidArgument;
