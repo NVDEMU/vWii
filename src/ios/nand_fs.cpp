@@ -108,9 +108,6 @@ int NandFS::Open(const std::string& path, uint32_t mode) {
         if (writable)
             openmode |= std::ios::out;
 
-        if (writable)
-            openmode |= std::ios::trunc;
-
         handle->stream.open(resolved, openmode);
 
         if (!handle->stream.is_open()) {
@@ -118,11 +115,13 @@ int NandFS::Open(const std::string& path, uint32_t mode) {
                 return ErrorNoSuchFile;
 
             handle->stream.clear();
-            handle->stream.open(resolved,
-                                std::ios::binary |
-                                std::ios::out |
-                                std::ios::trunc);
+            {
+                std::ofstream create(resolved, std::ios::binary);
+                if (!create)
+                    return ErrorNoSpace;
+            }
 
+            handle->stream.open(resolved, openmode);
             if (!handle->stream.is_open())
                 return ErrorNoSpace;
         }
