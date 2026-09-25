@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <mutex>
 #include <sstream>
 #include <span>
@@ -68,16 +69,6 @@ void Text(SDL_Renderer* renderer, float x, float y,
           const std::string& value, Color color = Text) {
     SetColor(renderer, color);
     SDL_RenderDebugText(renderer, x, y, value.c_str());
-}
-
-void TextF(SDL_Renderer* renderer, float x, float y,
-           Color color, const char* format, ...) {
-    SetColor(renderer, color);
-
-    va_list args;
-    va_start(args, format);
-    SDL_RenderDebugTextFormat(renderer, x, y, format, args);
-    va_end(args);
 }
 
 std::string Shorten(const std::string& value, std::size_t max_length) {
@@ -253,7 +244,7 @@ bool Frontend::Initialize(const char* title, int width, int height) {
         SDL_SetWindowFullscreen(impl_->window, true);
 
     impl_->keyboard_bindings.Load();
-    impl_->library.Rescan();
+    impl_->library.Load();
     return true;
 }
 
@@ -410,6 +401,18 @@ void Frontend::HandleLibraryClick(float x, float y, int clicks) {
         return;
     }
 
+    if (impl_->library.Games().empty()) {
+        if (Contains(x, y, SDL_FRect{292.0f, 270.0f, 220.0f, 54.0f})) {
+            OpenFolderDialog();
+            return;
+        }
+
+        if (Contains(x, y, SDL_FRect{530.0f, 270.0f, 220.0f, 54.0f})) {
+            OpenGameDialog();
+            return;
+        }
+    }
+
     constexpr float card_width = 294.0f;
     constexpr float card_height = 124.0f;
     constexpr float gap = 18.0f;
@@ -458,6 +461,32 @@ void Frontend::HandleSettingsClick(float x, float y) {
     }
 
     const float content_x = 442.0f;
+
+    if (impl_->settings_section == SettingsSection::Input &&
+        x >= content_x && x < content_x + 620.0f &&
+        y >= 158.0f && y < 158.0f + 17.0f * 28.0f) {
+        const std::size_t row =
+            static_cast<std::size_t>((y - 158.0f) / 28.0f);
+        const std::size_t first =
+            (impl_->selected_binding / 17) * 17;
+        const auto& entries = impl_->keyboard_bindings.Entries();
+        if (first + row < entries.size())
+            impl_->selected_binding = first + row;
+        return;
+    }
+
+    if (impl_->settings_section == SettingsSection::Library) {
+        const auto& folders = impl_->library.Folders();
+        if (y >= 272.0f &&
+            y < 272.0f +
+                static_cast<float>(folders.size()) * 38.0f &&
+            x >= content_x &&
+            x < content_x + 620.0f) {
+            impl_->selected_folder =
+                static_cast<std::size_t>((y - 272.0f) / 38.0f);
+            return;
+        }
+    }
 
     switch (impl_->settings_section) {
     case SettingsSection::General:
