@@ -162,15 +162,19 @@ boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
     const uint32_t fst_offset = ReadBootBE32(0x424);
     const uint32_t fst_size = ReadBootBE32(0x428);
 
-    if (fst_size != 0 && fst_size <= 16 * 1024 * 1024) {
+    if (fst_size != 0 && fst_size <= 2 * 1024 * 1024) {
         std::vector<uint8_t> fst(fst_size);
         if (disc_->ReadGamePartition(fst_offset, fst.data(), fst.size())) {
-            constexpr uint32_t fst_address = 0x817FEC60;
+            // Keep the FST below the bi2 scratch area and the initial stack.
+            constexpr uint32_t fst_address = 0x81600000;
+            constexpr uint32_t fst_capacity = 0x00200000;
+
             memory_.WriteBlock(fst_address, fst);
             memory_.Write32(0x80000038, fst_address);
             memory_.Write32(
                 0x8000003C,
                 (fst_size + 31u) & ~31u);
+            (void)fst_capacity;
         }
     }
 
@@ -185,7 +189,7 @@ boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
     // The real boot chain establishes an initial PPC stack before entering
     // the apploader/Main DOL. We bypass executable apploader code for now,
     // so establish a conservative stack near the top of MEM1.
-    cpu_.SetGPR(1, 0x817FF000);
+    cpu_.SetGPR(1, 0x817F8000);
     cpu_.SetGPR(2, 0);
     loaded_image_ = true;
     return result;
