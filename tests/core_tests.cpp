@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 
 namespace {
@@ -68,6 +69,31 @@ int main() {
         emulator.Step();
 
     assert(emulator.Memory().Read32(0x80001008) == 0x40400000);
+
+    // Persistent host-backed NAND file I/O.
+    const std::filesystem::path test_nand =
+        std::filesystem::temp_directory_path() / "vwii-core-test-nand";
+
+    vwii::ios::NandFS nand(emulator.Memory());
+    nand.SetRoot(test_nand);
+
+    constexpr uint32_t io_address = 0x80004000;
+    emulator.Memory().Write32(io_address, 0x12345678);
+
+    const int write_fd = nand.Open("/test.bin", 2);
+    assert(write_fd >= 8);
+    assert(nand.Write(write_fd, io_address, 4) == 4);
+    assert(nand.Close(write_fd) == 0);
+
+    const int read_fd = nand.Open("/test.bin", 1);
+    assert(read_fd >= 8);
+    emulator.Memory().Write32(io_address, 0);
+    assert(nand.Read(read_fd, io_address, 4) == 4);
+    assert(emulator.Memory().Read32(io_address) == 0x12345678);
+    assert(nand.Close(read_fd) == 0);
+
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(test_nand, cleanup_error);
 
     emulator.Shutdown();
     std::cout << "All vWii core tests passed.\n";
