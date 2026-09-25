@@ -18,6 +18,9 @@ constexpr int16_t SIMM(uint32_t instruction) { return static_cast<int16_t>(instr
 constexpr uint16_t UIMM(uint32_t instruction) { return static_cast<uint16_t>(instruction); }
 constexpr unsigned XO(uint32_t instruction) { return (instruction >> 1) & 0x3FF; }
 constexpr bool Rc(uint32_t instruction) { return (instruction & 1) != 0; }
+constexpr unsigned SPR(uint32_t instruction) {
+    return ((instruction >> 16) & 0x1F) | ((instruction >> 6) & 0x3E0);
+}
 
 constexpr unsigned SH(uint32_t instruction) { return (instruction >> 11) & 31; }
 constexpr unsigned MB(uint32_t instruction) { return (instruction >> 6) & 31; }
@@ -424,16 +427,15 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             break;
         }
 
-        case 339: // MFLR
-            gpr_[RD(instruction)] = lr_;
+        case 339: // MFSPR
+            gpr_[RD(instruction)] = ReadSPR(SPR(instruction));
             break;
 
         case 467: // MTSPR
-            WriteSPR((RD(instruction) << 5) | ((instruction >> 16) & 31),
-                     gpr_[RS(instruction)]);
+            WriteSPR(SPR(instruction), gpr_[RS(instruction)]);
             break;
 
-        case 371: // MFTB approximation: return a monotonic instruction counter
+        case 371: // MFTB approximation
             gpr_[RD(instruction)] = pc_;
             break;
 
@@ -493,14 +495,6 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             gpr_[RD(instruction)] = result;
             if (Rc(instruction))
                 SetCR0FromResult(result);
-            break;
-        }
-
-        case 467: { // MTSPR shares XO above; kept unreachable for clarity.
-            break;
-        }
-
-        case 16: { // MR aliases MF? Treat common mcrf-ish no-op safely.
             break;
         }
 
