@@ -126,6 +126,7 @@ void WiiRemoteKeyboard::KeyEvent(Key key, bool pressed) {
         case Key::IRDown: keys_.ir_down = false; break;
         case Key::IRLeft: keys_.ir_left = false; break;
         case Key::IRRight: keys_.ir_right = false; break;
+        case Key::Shake: keys_.shake = false; break;
 
         case Key::NunchukC: state_.nunchuk_c = false; break;
         case Key::NunchukZ: state_.nunchuk_z = false; break;
