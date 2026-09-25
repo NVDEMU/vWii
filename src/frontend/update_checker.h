@@ -31,6 +31,7 @@ public:
     UpdateChecker& operator=(const UpdateChecker&) = delete;
 
     void Start();
+    void Refresh();
     [[nodiscard]] Result GetResult() const;
     void OpenLatest() const;
 
