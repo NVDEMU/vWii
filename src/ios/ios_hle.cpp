@@ -84,6 +84,9 @@ void IOSHLE::Reset() {
     fds_[FD_STM].used = true;
     fds_[FD_STM].device = FD_STM;
 
+    fds_[FD_USB_OH1].used = true;
+    fds_[FD_USB_OH1].device = FD_USB_OH1;
+
     running_ = true;
 }
 
@@ -113,6 +116,9 @@ uint32_t IOSHLE::OpenDevice(const std::string& path, uint32_t mode) {
         return FD_ES;
     if (path == "/dev/stm/eventhook")
         return FD_STM;
+    if (path == "/dev/usb/oh1" ||
+        path.rfind("/dev/usb/oh1/", 0) == 0)
+        return FD_USB_OH1;
 
     if (!path.empty() && path.front() == '/') {
         if (path.rfind("/dev/", 0) == 0)
@@ -339,12 +345,86 @@ uint32_t IOSHLE::Ioctl(uint32_t fd, const std::array<uint32_t, 5>& args) {
     return 0;
 }
 
+
+uint32_t IOSHLE::HandleUsbIoctlV(uint32_t request,
+                                  uint32_t in_count,
+                                  uint32_t out_count,
+                                  uint32_t vector_address) {
+    struct IoVector {
+        uint32_t address;
+        uint32_t size;
+    };
+
+    const uint32_t total_vectors = in_count + out_count;
+    if (total_vectors > 32)
+        return ErrorInvalidArgument;
+
+    std::vector<IoVector> vectors(total_vectors);
+
+    for (uint32_t i = 0; i < total_vectors; ++i) {
+        const uint32_t address = vector_address + i * 8;
+        vectors[i].address = memory_.Read32(address);
+        vectors[i].size = memory_.Read32(address + 4);
+    }
+
+    // /dev/usb/oh1 is backed by the internal Bluetooth adapter. The initial
+    // HLE does not emulate Bluetooth packets yet, but it accepts the
+    // control/bulk/interrupt plumbing and returns deterministic empty data.
+    // This lets software initialize the resource manager cleanly.
+    switch (request) {
+    case 0: { // USB control message
+        if (in_count < 6 || out_count < 1)
+            return ErrorInvalidArgument;
+
+        const uint32_t output_address = vectors[in_count].address;
+        const uint32_t output_size = vectors[in_count].size;
+
+        if (output_size != 0)
+            memory_.Fill(output_address, output_size, 0);
+
+        return static_cast<uint32_t>(output_size);
+    }
+
+    case 1: // USB bulk transfer
+    case 2: { // USB interrupt transfer
+        if (in_count < 2 || out_count < 1)
+            return ErrorInvalidArgument;
+
+        const uint8_t endpoint =
+            memory_.Read8(vectors[0].address);
+
+        const uint32_t requested =
+            (static_cast<uint32_t>(memory_.Read8(vectors[1].address)) << 8) |
+            memory_.Read8(vectors[1].address + 1);
+
+        const uint32_t output_address = vectors[in_count].address;
+        const uint32_t output_size = vectors[in_count].size;
+
+        if ((endpoint & 0x80u) != 0 && output_size != 0)
+            memory_.Fill(output_address, output_size, 0);
+
+        return static_cast<uint32_t>(
+            std::min<uint32_t>(requested, output_size));
+    }
+
+    default:
+        return 0;
+    }
+}
+
 uint32_t IOSHLE::IoctlV(uint32_t fd,
                         const std::array<uint32_t, 5>& args) {
     if (fd >= fds_.size() || !fds_[fd].used)
         return ErrorInvalidArgument;
 
-    (void)args;
+    const uint32_t request = args[0];
+    const uint32_t in_count = args[1];
+    const uint32_t out_count = args[2];
+    const uint32_t vector_address = args[3];
+
+    if (fd == FD_USB_OH1)
+        return HandleUsbIoctlV(request, in_count, out_count, vector_address);
+
     return 0;
 }
 
