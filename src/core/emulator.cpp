@@ -18,10 +18,13 @@ bool Emulator::Initialize() {
 
     initialized_ = true;
     loaded_image_ = false;
+
+    ScheduleVideoInterrupt();
     return true;
 }
 
 void Emulator::Shutdown() {
+    scheduler_.Reset();
     disc_.reset();
     initialized_ = false;
     loaded_image_ = false;
@@ -35,6 +38,14 @@ void Emulator::Reset() {
 
     disc_.reset();
     loaded_image_ = false;
+}
+
+void Emulator::ScheduleVideoInterrupt() {
+    scheduler_.Schedule(16667, [this]() {
+        memory_.Hollywood().RaisePpcInterrupt(24);
+        if (initialized_)
+            ScheduleVideoInterrupt();
+    });
 }
 
 void Emulator::Step() {
