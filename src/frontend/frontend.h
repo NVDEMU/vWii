@@ -29,6 +29,7 @@ public:
 
     void Shutdown();
     [[nodiscard]] bool PumpEvents();
+    [[nodiscard]] std::string ConsumeDroppedFile();
     void Present(const Status& status);
 
 private:
