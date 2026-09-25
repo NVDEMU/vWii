@@ -64,24 +64,25 @@ std::string ExtractJsonString(const std::string& json, const std::string& key) {
 std::string ExtractAssetUrl(const std::string& json,
                             const std::string& suffix) {
     std::size_t search = 0;
+    std::string latest_url;
 
     while (search < json.size()) {
         const std::size_t name_pos =
             json.find("\"name\":\"", search);
         if (name_pos == std::string::npos)
-            return {};
+            break;
 
         const std::size_t name_start = name_pos + 8;
         const std::size_t name_end = json.find('"', name_start);
         if (name_end == std::string::npos)
-            return {};
+            break;
 
         const std::string name =
             json.substr(name_start, name_end - name_start);
 
         const std::size_t object_end = json.find('}', name_end);
         if (object_end == std::string::npos)
-            return {};
+            break;
 
         if (name.size() >= suffix.size() &&
             name.compare(name.size() - suffix.size(),
@@ -97,7 +98,7 @@ std::string ExtractAssetUrl(const std::string& json,
                 const std::size_t value_end =
                     json.find('"', value_start);
                 if (value_end != std::string::npos)
-                    return json.substr(
+                    latest_url = json.substr(
                         value_start, value_end - value_start);
             }
         }
@@ -105,7 +106,7 @@ std::string ExtractAssetUrl(const std::string& json,
         search = object_end + 1;
     }
 
-    return {};
+    return latest_url;
 }
 
 std::filesystem::path MakeTempPath() {
