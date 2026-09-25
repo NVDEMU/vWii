@@ -296,6 +296,9 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             const bool taken = ConditionBit(BO(instruction), BI(instruction));
             const uint32_t target = lr_ & ~3u;
 
+            if (instruction & 1)
+                lr_ = pc_;
+
             if (taken)
                 pc_ = target;
             break;
@@ -313,10 +316,13 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
 
         if (xo == 528) { // BCCTR
             const bool taken = ConditionBit(BO(instruction), BI(instruction));
-            if (taken)
-                pc_ = ctr_ & ~3u;
+            const uint32_t target = ctr_ & ~3u;
+
             if (instruction & 1)
                 lr_ = pc_;
+
+            if (taken)
+                pc_ = target;
             break;
         }
 
