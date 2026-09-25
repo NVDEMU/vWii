@@ -31,7 +31,7 @@ jobs:
 
       - name: Smoke test executable (Windows)
         if: runner.os == 'Windows'
-        run: .\\build\\Release\\vwii.exe --self-test
+        run: ./build/Release/vwii.exe --self-test
 
       - name: Smoke test executable (macOS)
         if: runner.os == 'macOS'
