@@ -4,6 +4,10 @@
 #include <memory>
 #include <string>
 
+namespace vwii::memory {
+class Memory;
+}
+
 namespace vwii::frontend {
 
 struct Status {
@@ -13,6 +17,10 @@ struct Status {
     uint64_t instructions{};
     bool loaded{};
     bool halted{};
+    uint32_t xfb_address{};
+    uint32_t xfb_width{};
+    uint32_t xfb_stride{};
+    uint32_t xfb_height{};
 };
 
 class Frontend {
@@ -30,7 +38,7 @@ public:
     void Shutdown();
     [[nodiscard]] bool PumpEvents();
     [[nodiscard]] std::string ConsumeDroppedFile();
-    void Present(const Status& status);
+    void Present(const Status& status, const memory::Memory* memory = nullptr);
 
 private:
     struct Impl;
