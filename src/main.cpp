@@ -133,6 +133,25 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (argc > 1 && std::string_view(argv[1]) == "--self-test") {
+        vwii::core::Emulator emulator;
+        if (!emulator.Initialize()) {
+            std::cerr << "Failed to initialize vWii.\n";
+            return 1;
+        }
+
+        emulator.Memory().Write32(0x80000000, 0x3860002A);
+        emulator.Step();
+
+        if (emulator.CPU().GetGPR(3) != 42) {
+            std::cerr << "PowerPC self-test failed.\n";
+            return 1;
+        }
+
+        std::cout << "vWii self-test passed.\n";
+        return 0;
+    }
+
     vwii::core::Emulator emulator;
     if (!emulator.Initialize()) {
         std::cerr << "Failed to initialize vWii.\n";
