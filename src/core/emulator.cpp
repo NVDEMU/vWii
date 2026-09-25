@@ -45,7 +45,8 @@ void Emulator::Reset() {
 
 void Emulator::ScheduleVideoInterrupt() {
     scheduler_.Schedule(16667, [this]() {
-        memory_.Hollywood().RaisePpcInterrupt(24);
+        memory_.Video().VBlank();
+        memory_.Audio().Tick(1);
         if (initialized_)
             ScheduleVideoInterrupt();
     });
