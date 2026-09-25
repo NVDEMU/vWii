@@ -106,7 +106,7 @@ Planned major subsystems:
 10. Save states, debugger, logging, and configuration
 11. Cross-platform graphical frontend
 
-Dolphin documents RVZ as a WIA-derived format with Zstandard support and decrypted/hash-stripped Wii partition data, which is the format handled by vWii's current disc backend. citeturn111428view0
+Dolphin documents RVZ as a WIA-derived format with Zstandard support and decrypted/hash-stripped Wii partition data, which is the format handled by vWii's current disc backend.
 
 ## Scope note
 
