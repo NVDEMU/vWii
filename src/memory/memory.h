@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "hardware/hollywood.h"
+
 namespace vwii::memory {
 
 class Memory {
@@ -30,14 +32,23 @@ public:
     void WriteBlock(uint32_t address, std::span<const uint8_t> data);
     void Fill(uint32_t address, std::size_t size, uint8_t value);
 
+    [[nodiscard]] hardware::Hollywood& Hollywood() { return hollywood_; }
+    [[nodiscard]] const hardware::Hollywood& Hollywood() const { return hollywood_; }
+    [[nodiscard]] bool ExternalInterruptPending() const {
+        return hollywood_.PpcInterruptPending();
+    }
+
 private:
+    [[nodiscard]] bool IsHollywoodRegister(uint32_t address) const;
+    [[nodiscard]] uint32_t HollywoodRegisterAddress(uint32_t address) const;
+
     [[nodiscard]] std::pair<const uint8_t*, std::size_t> Translate(uint32_t address) const;
     [[nodiscard]] std::pair<uint8_t*, std::size_t> TranslateMutable(uint32_t address);
-
     [[nodiscard]] std::size_t RegionRemaining(uint32_t address) const;
 
     std::vector<uint8_t> mem1_;
     std::vector<uint8_t> mem2_;
+    hardware::Hollywood hollywood_{};
 };
 
 } // namespace vwii::memory
