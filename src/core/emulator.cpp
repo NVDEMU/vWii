@@ -26,15 +26,13 @@ void Emulator::Reset() {
 }
 
 void Emulator::Step() {
-    if (initialized_) {
+    if (initialized_)
         cpu_.Step();
-    }
 }
 
 void Emulator::RunForInstructions(uint64_t count) {
-    for (uint64_t i = 0; i < count; ++i) {
+    for (uint64_t i = 0; i < count; ++i)
         Step();
-    }
 }
 
 boot::LoadResult Emulator::LoadImage(const std::vector<uint8_t>& image) {
@@ -57,6 +55,20 @@ boot::LoadResult Emulator::LoadImageFile(const std::string& path) {
     const boot::LoadResult result = boot::LoadImageFile(path, memory_);
     if (result.success) {
         cpu_.Reset(result.entry_point);
+        loaded_image_ = true;
+    } else {
+        loaded_image_ = false;
+    }
+
+    return result;
+}
+
+boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
+    memory_.Reset();
+
+    boot::WiiBootResult result = boot::LoadWiiGame(path, memory_);
+    if (result.success) {
+        cpu_.Reset(result.dol_result.entry_point);
         loaded_image_ = true;
     } else {
         loaded_image_ = false;
