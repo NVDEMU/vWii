@@ -116,9 +116,14 @@ int main(int argc, char** argv) {
 
                 status.pc = emulator.CPU().GetPC();
                 status.instructions = instructions;
+                const auto xfb = emulator.Memory().Video().CurrentXfb();
+                status.xfb_address = xfb.address;
+                status.xfb_width = xfb.width;
+                status.xfb_stride = xfb.stride;
+                status.xfb_height = xfb.height;
                 status.halted = emulator.CPU().Halted();
 
-                frontend.Present(status);
+                frontend.Present(status, &emulator.Memory());
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
 
@@ -192,9 +197,14 @@ int main(int argc, char** argv) {
 
         status.pc = emulator.CPU().GetPC();
         status.instructions = instructions;
+        const auto xfb = emulator.Memory().Video().CurrentXfb();
+        status.xfb_address = xfb.address;
+        status.xfb_width = xfb.width;
+        status.xfb_stride = xfb.stride;
+        status.xfb_height = xfb.height;
         status.halted = emulator.CPU().Halted();
 
-        frontend.Present(status);
+        frontend.Present(status, &emulator.Memory());
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
