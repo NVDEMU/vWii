@@ -103,85 +103,164 @@ void Frontend::Shutdown() {
 
 namespace {
 
-input::Key MapKey(SDL_Scancode scancode) {
+void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
+                   SDL_Scancode scancode, bool pressed) {
+    if (!wiimote)
+        return;
+
+    auto send = [&](input::Key key) {
+        wiimote->KeyEvent(key, pressed);
+    };
+
     switch (scancode) {
-    case SDL_SCANCODE_UP: return input::Key::DpadUp;
-    case SDL_SCANCODE_DOWN: return input::Key::DpadDown;
-    case SDL_SCANCODE_LEFT: return input::Key::DpadLeft;
-    case SDL_SCANCODE_RIGHT: return input::Key::DpadRight;
-    case SDL_SCANCODE_SPACE: return input::Key::A;
-    case SDL_SCANCODE_RCTRL: return input::Key::B;
-    case SDL_SCANCODE_Z: return input::Key::One;
-    case SDL_SCANCODE_X: return input::Key::Two;
-    case SDL_SCANCODE_EQUALS: return input::Key::Plus;
-    case SDL_SCANCODE_MINUS: return input::Key::Minus;
-    case SDL_SCANCODE_BACKSPACE: return input::Key::Home;
+    case SDL_SCANCODE_UP: send(input::Key::DpadUp); break;
+    case SDL_SCANCODE_DOWN: send(input::Key::DpadDown); break;
+    case SDL_SCANCODE_LEFT: send(input::Key::DpadLeft); break;
+    case SDL_SCANCODE_RIGHT: send(input::Key::DpadRight); break;
+    case SDL_SCANCODE_SPACE: send(input::Key::A); break;
+    case SDL_SCANCODE_RCTRL: send(input::Key::B); break;
+    case SDL_SCANCODE_Z: send(input::Key::One); break;
+    case SDL_SCANCODE_X: send(input::Key::Two); break;
+    case SDL_SCANCODE_EQUALS: send(input::Key::Plus); break;
+    case SDL_SCANCODE_MINUS: send(input::Key::Minus); break;
+    case SDL_SCANCODE_BACKSPACE: send(input::Key::Home); break;
 
-    case SDL_SCANCODE_KP_8: return input::Key::IRUp;
-    case SDL_SCANCODE_KP_2: return input::Key::IRDown;
-    case SDL_SCANCODE_KP_4: return input::Key::IRLeft;
-    case SDL_SCANCODE_KP_6: return input::Key::IRRight;
-    case SDL_SCANCODE_KP_5: return input::Key::IRCenter;
-    case SDL_SCANCODE_KP_7: return input::Key::IRZoomOut;
-    case SDL_SCANCODE_KP_9: return input::Key::IRZoomIn;
+    case SDL_SCANCODE_KP_8: send(input::Key::IRUp); break;
+    case SDL_SCANCODE_KP_2: send(input::Key::IRDown); break;
+    case SDL_SCANCODE_KP_4: send(input::Key::IRLeft); break;
+    case SDL_SCANCODE_KP_6: send(input::Key::IRRight); break;
+    case SDL_SCANCODE_KP_5: send(input::Key::IRCenter); break;
+    case SDL_SCANCODE_KP_7: send(input::Key::IRZoomOut); break;
+    case SDL_SCANCODE_KP_9: send(input::Key::IRZoomIn); break;
 
-    case SDL_SCANCODE_W: return input::Key::NunchukUp;
-    case SDL_SCANCODE_S: return input::Key::NunchukDown;
-    case SDL_SCANCODE_A: return input::Key::NunchukLeft;
-    case SDL_SCANCODE_D: return input::Key::NunchukRight;
-    case SDL_SCANCODE_Q: return input::Key::NunchukC;
-    case SDL_SCANCODE_E: return input::Key::NunchukZ;
+    case SDL_SCANCODE_W: send(input::Key::NunchukUp); break;
+    case SDL_SCANCODE_S: send(input::Key::NunchukDown); break;
+    case SDL_SCANCODE_A: send(input::Key::NunchukLeft); break;
+    case SDL_SCANCODE_D: send(input::Key::NunchukRight); break;
+    case SDL_SCANCODE_Q: send(input::Key::NunchukC); break;
+    case SDL_SCANCODE_E: send(input::Key::NunchukZ); break;
 
-    case SDL_SCANCODE_I: return input::Key::ClassicUp;
-    case SDL_SCANCODE_K: return input::Key::ClassicDown;
-    case SDL_SCANCODE_J: return input::Key::ClassicLeft;
-    case SDL_SCANCODE_L: return input::Key::ClassicRight;
-    case SDL_SCANCODE_U: return input::Key::ClassicA;
-    case SDL_SCANCODE_O: return input::Key::ClassicB;
-    case SDL_SCANCODE_P: return input::Key::ClassicX;
-    case SDL_SCANCODE_LEFTBRACKET: return input::Key::ClassicY;
-    case SDL_SCANCODE_N: return input::Key::ClassicL;
-    case SDL_SCANCODE_M: return input::Key::ClassicR;
-    case SDL_SCANCODE_COMMA: return input::Key::ClassicZL;
-    case SDL_SCANCODE_PERIOD: return input::Key::ClassicZR;
-    case SDL_SCANCODE_9: return input::Key::ClassicMinus;
-    case SDL_SCANCODE_0: return input::Key::ClassicPlus;
+    case SDL_SCANCODE_I: send(input::Key::ClassicUp); break;
+    case SDL_SCANCODE_K: send(input::Key::ClassicDown); break;
+    case SDL_SCANCODE_J: send(input::Key::ClassicLeft); break;
+    case SDL_SCANCODE_L: send(input::Key::ClassicRight); break;
+    case SDL_SCANCODE_U: send(input::Key::ClassicA); break;
+    case SDL_SCANCODE_O: send(input::Key::ClassicB); break;
+    case SDL_SCANCODE_P: send(input::Key::ClassicX); break;
+    case SDL_SCANCODE_LEFTBRACKET: send(input::Key::ClassicY); break;
+    case SDL_SCANCODE_N: send(input::Key::ClassicL); break;
+    case SDL_SCANCODE_M: send(input::Key::ClassicR); break;
+    case SDL_SCANCODE_COMMA: send(input::Key::ClassicZL); break;
+    case SDL_SCANCODE_PERIOD: send(input::Key::ClassicZR); break;
 
-    case SDL_SCANCODE_1: return input::Key::GuitarGreen;
-    case SDL_SCANCODE_2: return input::Key::GuitarRed;
-    case SDL_SCANCODE_3: return input::Key::GuitarYellow;
-    case SDL_SCANCODE_4: return input::Key::GuitarBlue;
-    case SDL_SCANCODE_5: return input::Key::GuitarOrange;
-    case SDL_SCANCODE_G: return input::Key::GuitarStrumUp;
-    case SDL_SCANCODE_H: return input::Key::GuitarStrumDown;
-    case SDL_SCANCODE_Y: return input::Key::GuitarWhammyUp;
-    case SDL_SCANCODE_T: return input::Key::GuitarWhammyDown;
+    case SDL_SCANCODE_F2: send(input::Key::ExtensionNunchuk); break;
+    case SDL_SCANCODE_F3: send(input::Key::ExtensionClassic); break;
+    case SDL_SCANCODE_F4: send(input::Key::ExtensionGuitar); break;
+    case SDL_SCANCODE_F5: send(input::Key::ExtensionDrums); break;
+    case SDL_SCANCODE_F6: send(input::Key::ExtensionTurntable); break;
+    case SDL_SCANCODE_F7: send(input::Key::ExtensionUDraw); break;
+    case SDL_SCANCODE_F8: send(input::Key::ExtensionDrawsome); break;
+    case SDL_SCANCODE_F9: send(input::Key::ExtensionTaTaCon); break;
+    case SDL_SCANCODE_F10: send(input::Key::ToggleMotionPlus); break;
+    case SDL_SCANCODE_F11: send(input::Key::ExtensionShinkansen); break;
+    default: break;
+    }
 
-    case SDL_SCANCODE_6: return input::Key::DrumRed;
-    case SDL_SCANCODE_7: return input::Key::DrumYellow;
-    case SDL_SCANCODE_8: return input::Key::DrumBlue;
-    case SDL_SCANCODE_9: return input::Key::DrumGreen;
-    case SDL_SCANCODE_0: return input::Key::DrumOrange;
-    case SDL_SCANCODE_N: return input::Key::DrumKick;
+    switch (scancode) {
+    case SDL_SCANCODE_1:
+        send(input::Key::One);
+        send(input::Key::GuitarGreen);
+        send(input::Key::DrumRed);
+        break;
+    case SDL_SCANCODE_2:
+        send(input::Key::Two);
+        send(input::Key::GuitarRed);
+        send(input::Key::DrumYellow);
+        break;
+    case SDL_SCANCODE_3:
+        send(input::Key::GuitarYellow);
+        send(input::Key::DrumBlue);
+        break;
+    case SDL_SCANCODE_4:
+        send(input::Key::GuitarBlue);
+        send(input::Key::DrumGreen);
+        break;
+    case SDL_SCANCODE_5:
+        send(input::Key::GuitarOrange);
+        send(input::Key::DrumOrange);
+        break;
+    case SDL_SCANCODE_6:
+        send(input::Key::DrumRed);
+        break;
+    case SDL_SCANCODE_7:
+        send(input::Key::DrumYellow);
+        break;
+    case SDL_SCANCODE_8:
+        send(input::Key::DrumBlue);
+        break;
+    case SDL_SCANCODE_9:
+        send(input::Key::DrumGreen);
+        send(input::Key::ClassicMinus);
+        break;
+    case SDL_SCANCODE_0:
+        send(input::Key::DrumOrange);
+        send(input::Key::ClassicPlus);
+        break;
+    default:
+        break;
+    }
 
-    case SDL_SCANCODE_F: return input::Key::TurntableGreen;
-    case SDL_SCANCODE_G: return input::Key::TurntableRed;
-    case SDL_SCANCODE_H: return input::Key::TurntableBlue;
-    case SDL_SCANCODE_J: return input::Key::TurntableDeckLeft;
-    case SDL_SCANCODE_L: return input::Key::TurntableDeckRight;
+    switch (scancode) {
+    case SDL_SCANCODE_G:
+        send(input::Key::GuitarStrumUp);
+        send(input::Key::TurntableRed);
+        break;
+    case SDL_SCANCODE_H:
+        send(input::Key::GuitarStrumDown);
+        send(input::Key::TurntableBlue);
+        break;
+    case SDL_SCANCODE_T:
+        send(input::Key::GuitarWhammyDown);
+        send(input::Key::AccelYNegative);
+        break;
+    case SDL_SCANCODE_Y:
+        send(input::Key::GuitarWhammyUp);
+        send(input::Key::AccelZPositive);
+        break;
+    case SDL_SCANCODE_F:
+        send(input::Key::TurntableGreen);
+        send(input::Key::AccelYPositive);
+        break;
+    case SDL_SCANCODE_R:
+        send(input::Key::AccelYPositive);
+        send(input::Key::ShinkansenThrottleUp);
+        break;
+    case SDL_SCANCODE_V:
+        send(input::Key::TaTaConHit);
+        send(input::Key::ShinkansenBrake);
+        break;
+    case SDL_SCANCODE_B:
+        send(input::Key::TaTaConRim);
+        break;
+    default:
+        break;
+    }
 
-    case SDL_SCANCODE_F2: return input::Key::ExtensionNunchuk;
-    case SDL_SCANCODE_F3: return input::Key::ExtensionClassic;
-    case SDL_SCANCODE_F4: return input::Key::ExtensionGuitar;
-    case SDL_SCANCODE_F5: return input::Key::ExtensionDrums;
-    case SDL_SCANCODE_F6: return input::Key::ExtensionTurntable;
-    case SDL_SCANCODE_F7: return input::Key::ExtensionUDraw;
-    case SDL_SCANCODE_F8: return input::Key::ExtensionDrawsome;
-    case SDL_SCANCODE_F9: return input::Key::ExtensionTaTaCon;
-    case SDL_SCANCODE_F10: return input::Key::ToggleMotionPlus;
-    case SDL_SCANCODE_F11: return input::Key::ExtensionShinkansen;
-
-    default: return input::Key::Home;
+    switch (scancode) {
+    case SDL_SCANCODE_I: send(input::Key::MotionPitchUp); break;
+    case SDL_SCANCODE_K: send(input::Key::MotionPitchDown); break;
+    case SDL_SCANCODE_J: send(input::Key::MotionYawLeft); break;
+    case SDL_SCANCODE_L: send(input::Key::MotionYawRight); break;
+    case SDL_SCANCODE_U: send(input::Key::MotionRollLeft); break;
+    case SDL_SCANCODE_O: send(input::Key::MotionRollRight); break;
+    case SDL_SCANCODE_T: send(input::Key::AccelXNegative); break;
+    case SDL_SCANCODE_G: send(input::Key::AccelXPositive); break;
+    case SDL_SCANCODE_R: send(input::Key::AccelYPositive); break;
+    case SDL_SCANCODE_F: send(input::Key::AccelYNegative); break;
+    case SDL_SCANCODE_Y: send(input::Key::AccelZPositive); break;
+    case SDL_SCANCODE_H: send(input::Key::AccelZNegative); break;
+    case SDL_SCANCODE_Q: send(input::Key::Shake); break;
+    default: break;
     }
 }
 
@@ -223,6 +302,7 @@ bool IsMappedKey(SDL_Scancode scancode) {
     case SDL_SCANCODE_M:
     case SDL_SCANCODE_COMMA:
     case SDL_SCANCODE_PERIOD:
+    case SDL_SCANCODE_0:
     case SDL_SCANCODE_1:
     case SDL_SCANCODE_2:
     case SDL_SCANCODE_3:
@@ -232,12 +312,14 @@ bool IsMappedKey(SDL_Scancode scancode) {
     case SDL_SCANCODE_7:
     case SDL_SCANCODE_8:
     case SDL_SCANCODE_9:
-    case SDL_SCANCODE_0:
+    case SDL_SCANCODE_B:
+    case SDL_SCANCODE_F:
     case SDL_SCANCODE_G:
     case SDL_SCANCODE_H:
-    case SDL_SCANCODE_Y:
+    case SDL_SCANCODE_R:
     case SDL_SCANCODE_T:
-    case SDL_SCANCODE_F:
+    case SDL_SCANCODE_V:
+    case SDL_SCANCODE_Y:
     case SDL_SCANCODE_F2:
     case SDL_SCANCODE_F3:
     case SDL_SCANCODE_F4:
@@ -269,12 +351,12 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
 
         if (wiimote && event.type == SDL_EVENT_KEY_DOWN &&
             !event.key.repeat && IsMappedKey(event.key.scancode)) {
-            wiimote->KeyEvent(MapKey(event.key.scancode), true);
+            SendMappedKey(wiimote, event.key.scancode, true);
         }
 
         if (wiimote && event.type == SDL_EVENT_KEY_UP &&
             IsMappedKey(event.key.scancode)) {
-            wiimote->KeyEvent(MapKey(event.key.scancode), false);
+            SendMappedKey(wiimote, event.key.scancode, false);
         }
 
         if (event.type == SDL_EVENT_KEY_DOWN &&
