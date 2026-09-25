@@ -1,8 +1,11 @@
 #include "core/emulator.h"
+#include "frontend/frontend.h"
 #include "video/video_backend.h"
 
+#include <chrono>
 #include <iostream>
 #include <string_view>
+#include <thread>
 
 namespace {
 
@@ -15,7 +18,9 @@ void PrintUsage() {
         << "  vwii --self-test\n"
         << "  vwii --load <file.dol|file.elf>\n"
         << "  vwii --boot <game.rvz>\n"
-        << "  vwii --boot <game.rvz> --run <instructions>\n";
+        << "  vwii --boot <game.rvz> --run <instructions>\n"
+        << "\n"
+        << "The GUI accepts RVZ files by drag-and-drop.\n";
 }
 
 } // namespace
@@ -105,25 +110,47 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto video = vwii::video::CreateNullBackend();
-    if (!video->Initialize()) {
-        std::cerr << "Failed to initialize video backend.\n";
+    // No arguments launches the GUI. Users can drag an RVZ onto the window.
+    vwii::frontend::Frontend frontend;
+    if (!frontend.Initialize("vWii", 960, 720)) {
+        std::cerr << "Failed to initialize the vWii frontend.\n";
         return 1;
     }
 
-    emulator.Memory().Write32(0x80000000, 0x3860002A);
-    emulator.Step();
+    vwii::frontend::Status status;
+    uint64_t instructions = 0;
 
-    if (emulator.CPU().GetGPR(3) != 42) {
-        std::cerr << "PowerPC self-test failed.\n";
-        return 1;
+    while (frontend.PumpEvents()) {
+        const std::string dropped = frontend.ConsumeDroppedFile();
+
+        if (!dropped.empty()) {
+            const auto result = emulator.LoadWiiGame(dropped);
+            if (result.success) {
+                status.game_id = result.disc.game_id;
+                status.loaded = true;
+                status.halted = false;
+                std::cout << "Loaded " << dropped << " (" << status.game_id << ")\n";
+            } else {
+                std::cerr << "Wii boot preparation failed: "
+                          << result.error << "\n";
+            }
+        }
+
+        if (status.loaded && !emulator.CPU().Halted()) {
+            constexpr uint64_t InstructionsPerFrame = 5000;
+            emulator.RunForInstructions(InstructionsPerFrame);
+            instructions += InstructionsPerFrame;
+        }
+
+        status.pc = emulator.CPU().GetPC();
+        status.instructions = instructions;
+        status.halted = emulator.CPU().Halted();
+
+        frontend.Present(status);
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
-    video->Present({640, 480, 1});
-    video->Shutdown();
+    frontend.Shutdown();
     emulator.Shutdown();
-
-    std::cout << "vWii initialized successfully.\n";
-    std::cout << "PowerPC interpreter self-test passed.\n";
     return 0;
 }
