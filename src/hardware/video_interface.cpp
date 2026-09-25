@@ -51,16 +51,32 @@ void VideoInterface::Write32(uint32_t address, uint32_t value) {
 
 uint32_t VideoInterface::XfbAddressTop() const {
     const uint32_t packed = Read32(Base + 0x1C);
-    const uint32_t fbb = packed >> 8;
-    const bool poff = (packed & (1u << 4)) != 0;
+    const uint32_t fbb = packed & 0x00FFFFFFu;
+    const bool poff = (packed & (1u << 28)) != 0;
     return poff ? (fbb << 5) : fbb;
 }
 
 uint32_t VideoInterface::XfbAddressBottom() const {
     const uint32_t packed = Read32(Base + 0x24);
-    const uint32_t fbb = packed >> 8;
-    const bool poff = (packed & (1u << 4)) != 0;
+    const uint32_t fbb = packed & 0x00FFFFFFu;
+    const bool poff = (packed & (1u << 28)) != 0;
     return poff ? (fbb << 5) : fbb;
+}
+
+XfbInfo VideoInterface::CurrentXfb() const {
+    const uint16_t picture = registers_[0x48 / 2];
+    const uint16_t vertical = registers_[0x00 / 2];
+
+    const uint32_t width_words = (picture >> 8) & 0x7Fu;
+    const uint32_t stride_words = picture & 0xFFu;
+    const uint32_t active_lines = (vertical >> 4) & 0x3FFu;
+
+    return {
+        XfbAddressTop(),
+        width_words * 16,
+        stride_words * 32,
+        active_lines
+    };
 }
 
 } // namespace vwii::hardware
