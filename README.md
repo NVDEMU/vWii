@@ -113,3 +113,27 @@ Dolphin documents RVZ as a WIA-derived format with Zstandard support and decrypt
 vWii is being developed as a separate implementation rather than copying Dolphin source code.
 
 Use game dumps, system software, and other copyrighted material only when you have the legal right to use them.
+
+## Keyboard Wii Remote controls
+
+The GUI has a built-in virtual Wii Remote driven entirely by the keyboard. SDL3 reports physical scancodes, so the default layout is independent of the user's keyboard language/layout. citeturn422338search0turn422338search4
+
+Core Wii Remote: Arrow keys = D-pad, Space = A, Right Ctrl = B, Z = 1, X = 2, = = Plus, - = Minus, Backspace = Home.
+
+IR pointer simulation: Numpad 8/2/4/6 move the pointer, Numpad 5 centers it, Numpad 7/9 zoom it out/in.
+
+Nunchuk: W/A/S/D = stick, Q = C, E = Z.
+
+Classic Controller: I/J/K/L = left stick, U/O/P/[ = A/B/X/Y, N/M = L/R, Comma/Period = ZL/ZR, 0/9 = Plus/Minus.
+
+Guitar: 1/2/3/4/5 = green/red/yellow/blue/orange frets, G/H = strum up/down, T/Y = whammy down/up.
+
+Drums: 6/7/8/9/0 = drum pads, N = kick pedal.
+
+Turntable: F/G/H = green/red/blue, J/L = deck movement.
+
+Motion simulation: I/K = pitch up/down, J/L = yaw left/right, U/O = roll left/right, T/G = X acceleration, R/F = Y acceleration, Y/H = Z acceleration, Q = shake.
+
+Extension selection: F1 = no extension, F2 = Nunchuk, F3 = Classic, F4 = Guitar, F5 = Drums, F6 = Turntable, F7 = UDraw, F8 = Drawsome, F9 = TaTaCon, F11 = Shinkansen. F10 toggles MotionPlus.
+
+The virtual HID layer currently covers the common Dolphin attachment set—Nunchuk, Classic, Guitar, Drums, Turntable, UDraw, Drawsome, TaTaCon, Shinkansen—and exposes MotionPlus gyro data. Dolphin's public Wii Remote implementation lists those same attachment types and treats MotionPlus as an attachable sensor. citeturn209127search0
