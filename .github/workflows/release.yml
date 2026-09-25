@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+        run: cmake -S . -B build -DBUILD_TESTING=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
 
       - name: Build
         run: cmake --build build --config Release --parallel
