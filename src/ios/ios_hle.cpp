@@ -18,6 +18,7 @@ constexpr uint32_t IOS_IPC_BASE = 0x0D800000;
 constexpr uint32_t IPC_PPCMSG = IOS_IPC_BASE + 0x00;
 constexpr uint32_t IPC_PPCCTRL = IOS_IPC_BASE + 0x04;
 constexpr uint32_t IPC_ARMMSG = IOS_IPC_BASE + 0x08;
+constexpr uint32_t IPC_X1 = 1u << 0;
 
 constexpr uint32_t FD_DI = 1;
 constexpr uint32_t FD_FS = 2;
@@ -406,7 +407,7 @@ uint32_t IOSHLE::HandleUsbIoctlV(uint32_t request,
         const uint32_t output_size = vectors[in_count].size;
 
         if ((endpoint & 0x80u) != 0 && output_size != 0) {
-            if (fd == FD_USB_OH1 && request == 2 && wiimote_) {
+            if (request == 2 && wiimote_) {
                 const auto report = wiimote_->BuildReport();
                 const std::size_t count =
                     std::min<std::size_t>(report.size(), output_size);
