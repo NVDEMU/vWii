@@ -96,6 +96,20 @@ void WiiRemoteKeyboard::SetExtensionHotkey(Key key) {
 void WiiRemoteKeyboard::KeyEvent(Key key, bool pressed) {
     if (!pressed) {
         switch (key) {
+        case Key::DpadUp: state_.buttons &= ~PAD_UP; break;
+        case Key::DpadDown: state_.buttons &= ~PAD_DOWN; break;
+        case Key::DpadLeft: state_.buttons &= ~PAD_LEFT; break;
+        case Key::DpadRight: state_.buttons &= ~PAD_RIGHT; break;
+        case Key::A: state_.buttons &= ~BUTTON_A; break;
+        case Key::B: state_.buttons &= ~BUTTON_B; break;
+        case Key::One: state_.buttons &= ~BUTTON_ONE; break;
+        case Key::Two: state_.buttons &= ~BUTTON_TWO; break;
+        case Key::Plus: state_.buttons &= ~BUTTON_PLUS; break;
+        case Key::Minus: state_.buttons &= ~BUTTON_MINUS; break;
+        case Key::Home: state_.buttons &= ~BUTTON_HOME; break;
+        case Key::IRZoomIn: keys_.ir_zoom_in = false; break;
+        case Key::IRZoomOut: keys_.ir_zoom_out = false; break;
+
         case Key::MotionPitchUp: keys_.motion_pitch_up = false; break;
         case Key::MotionPitchDown: keys_.motion_pitch_down = false; break;
         case Key::MotionYawLeft: keys_.motion_yaw_left = false; break;
@@ -112,6 +126,63 @@ void WiiRemoteKeyboard::KeyEvent(Key key, bool pressed) {
         case Key::IRDown: keys_.ir_down = false; break;
         case Key::IRLeft: keys_.ir_left = false; break;
         case Key::IRRight: keys_.ir_right = false; break;
+
+        case Key::NunchukC: state_.nunchuk_c = false; break;
+        case Key::NunchukZ: state_.nunchuk_z = false; break;
+        case Key::ClassicA: state_.classic_buttons &= ~(1u << 0); break;
+        case Key::ClassicB: state_.classic_buttons &= ~(1u << 1); break;
+        case Key::ClassicX: state_.classic_buttons &= ~(1u << 2); break;
+        case Key::ClassicY: state_.classic_buttons &= ~(1u << 3); break;
+        case Key::ClassicL: state_.classic_buttons &= ~(1u << 4); break;
+        case Key::ClassicR: state_.classic_buttons &= ~(1u << 5); break;
+        case Key::ClassicZL: state_.classic_buttons &= ~(1u << 6); break;
+        case Key::ClassicZR: state_.classic_buttons &= ~(1u << 7); break;
+        case Key::ClassicPlus: state_.classic_buttons &= ~(1u << 8); break;
+        case Key::ClassicMinus: state_.classic_buttons &= ~(1u << 9); break;
+        case Key::ClassicHome: state_.classic_buttons &= ~(1u << 10); break;
+
+        case Key::GuitarGreen: state_.guitar_frets[0] = false; break;
+        case Key::GuitarRed: state_.guitar_frets[1] = false; break;
+        case Key::GuitarYellow: state_.guitar_frets[2] = false; break;
+        case Key::GuitarBlue: state_.guitar_frets[3] = false; break;
+        case Key::GuitarOrange: state_.guitar_frets[4] = false; break;
+        case Key::GuitarStrumUp:
+        case Key::GuitarStrumDown: state_.guitar_strum = 0; break;
+        case Key::GuitarWhammyUp:
+        case Key::GuitarWhammyDown: state_.guitar_whammy = 0; break;
+        case Key::GuitarMinus: state_.buttons &= ~BUTTON_MINUS; break;
+        case Key::GuitarPlus: state_.buttons &= ~BUTTON_PLUS; break;
+
+        case Key::DrumRed: state_.drum_pads[0] = false; break;
+        case Key::DrumYellow: state_.drum_pads[1] = false; break;
+        case Key::DrumBlue: state_.drum_pads[2] = false; break;
+        case Key::DrumGreen: state_.drum_pads[3] = false; break;
+        case Key::DrumOrange: state_.drum_pads[4] = false; break;
+        case Key::DrumKick: state_.drum_kick = false; break;
+        case Key::DrumPlus: state_.buttons &= ~BUTTON_PLUS; break;
+        case Key::DrumMinus: state_.buttons &= ~BUTTON_MINUS; break;
+
+        case Key::TurntableGreen: state_.turntable_green = false; break;
+        case Key::TurntableRed: state_.turntable_red = false; break;
+        case Key::TurntableBlue: state_.turntable_blue = false; break;
+        case Key::TurntableDeckLeft:
+        case Key::TurntableDeckRight: state_.turntable_deck = 0; break;
+        case Key::TurntableCrossfadeLeft:
+        case Key::TurntableCrossfadeRight: state_.turntable_crossfade = 0; break;
+
+        case Key::UDrawPen: state_.udraw_pen = false; break;
+        case Key::UDrawA: state_.udraw_a = false; break;
+        case Key::UDrawB: state_.udraw_b = false; break;
+        case Key::DrawsomePen: state_.drawsome_pen = false; break;
+        case Key::DrawsomeA: state_.drawsome_a = false; break;
+        case Key::DrawsomeB: state_.drawsome_b = false; break;
+
+        case Key::TaTaConHit: state_.tatacon_hit = false; break;
+        case Key::TaTaConRim: state_.tatacon_rim = false; break;
+        case Key::ShinkansenThrottleUp:
+        case Key::ShinkansenThrottleDown: state_.shinkansen_throttle = 0; break;
+        case Key::ShinkansenBrake: state_.shinkansen_brake = 0; break;
+        case Key::ShinkansenHorn: state_.shinkansen_horn = false; break;
         default: break;
         }
         return;
@@ -236,11 +307,6 @@ void WiiRemoteKeyboard::KeyEvent(Key key, bool pressed) {
         break;
     }
 
-    // One-shot modifier buttons clear on release in the common release path.
-    if (!pressed) {
-        const auto clear_bit = [&](uint16_t bit) { state_.buttons &= ~bit; };
-        (void)clear_bit;
-    }
 }
 
 void WiiRemoteKeyboard::ApplyDigitalToAxes() {
