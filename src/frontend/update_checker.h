@@ -33,7 +33,9 @@ public:
     void Start();
     void Refresh();
     [[nodiscard]] Result GetResult() const;
-    void OpenLatest() const;
+    // Downloads the platform-specific nightly asset directly from GitHub Releases.
+    // Returns the local path on success, or an empty string on failure.
+    [[nodiscard]] std::string DownloadLatest();
 
 private:
     void Check();
