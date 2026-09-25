@@ -731,10 +731,13 @@ bool DiscImage::ReadPartitionRvz(const PartitionRegion& region,
         Group group =
             groups_[region.first_group + static_cast<uint32_t>(group_number)];
 
-        group.logical_offset = group_number * group_logical_size;
+        // RVZ packing's PRNG offset is measured in original 0x8000-byte
+        // disc sectors, even though the stored Wii partition payload is
+        // 0x7c00 bytes per sector after hashes are removed.
+        group.logical_offset = group_number * WiiSectorSize;
         group.logical_size = static_cast<uint32_t>(
             std::min<uint64_t>(group_logical_size,
-                               region_size - group.logical_offset));
+                               region_size - group_number * group_logical_size));
 
         std::vector<uint8_t> decoded;
         if (group.stored_size == 0) {
