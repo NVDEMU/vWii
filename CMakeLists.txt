@@ -30,7 +30,6 @@ set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     SDL3
@@ -82,7 +81,7 @@ else()
     message(FATAL_ERROR "Zstandard static target was not created")
 endif()
 
-target_link_libraries(vwii_core PRIVATE ${VWII_ZSTD_TARGET})
+target_link_libraries(vwii_core PRIVATE ${VWII_ZSTD_TARGET} SDL3::SDL3)
 
 target_compile_definitions(vwii_core
     PUBLIC
