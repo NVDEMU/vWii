@@ -193,8 +193,17 @@ bool DiscImage::Open(const std::string& path) {
     file_.clear();
     file_.seekg(0, std::ios::beg);
 
-    if (std::memcmp(magic.data(), "WIA\x01", 4) != 0) {
-        info_.error = "Only RVZ disc images are supported by the current disc backend";
+    const bool wia_magic =
+        std::memcmp(magic.data(), "WIA\x01", 4) == 0;
+    const bool rvz_magic =
+        std::memcmp(magic.data(), "RVZ\x01", 4) == 0;
+
+    // Most RVZ files use the WIA-compatible WIA\\x01 container magic,
+    // while some RVZ writers identify the same format explicitly as RVZ\\x01.
+    // Both share the WIA/RVZ metadata layout used below.
+    if (!wia_magic && !rvz_magic) {
+        info_.error =
+            "Not a supported RVZ/WIA container (expected WIA\\x01 or RVZ\\x01)";
         return false;
     }
 
