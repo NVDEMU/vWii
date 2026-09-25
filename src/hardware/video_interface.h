@@ -18,6 +18,8 @@ public:
     void Write32(uint32_t address, uint32_t value);
 
     [[nodiscard]] uint64_t FrameCount() const { return frame_count_; }
+    [[nodiscard]] uint32_t XfbAddressTop() const;
+    [[nodiscard]] uint32_t XfbAddressBottom() const;
     void VBlank();
 
 private:
@@ -25,7 +27,7 @@ private:
     static constexpr uint32_t Size = 0x100;
 
     Hollywood& hollywood_;
-    std::array<uint32_t, Size / 4> registers_{};
+    std::array<uint16_t, Size / 2> registers_{};
     uint64_t frame_count_{};
     uint64_t cycle_accumulator_{};
 };
