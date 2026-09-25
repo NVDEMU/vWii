@@ -230,15 +230,7 @@ bool Frontend::Initialize(const char* title, int width, int height) {
         return false;
     }
 
-    SDL_SetRenderLogicalPresentation(
-        impl_->renderer,
-        LogicalWidth,
-        LogicalHeight,
-        SDL_LOGICAL_PRESENTATION_LETTERBOX);
-
-    SDL_SetRenderVSync(
-        impl_->renderer,
-        impl_->vsync ? 1 : SDL_RENDERER_VSYNC_DISABLED);
+    ApplyPresentationSettings();
 
     if (impl_->fullscreen)
         SDL_SetWindowFullscreen(impl_->window, true);
@@ -321,6 +313,23 @@ void Frontend::SaveConfig() const {
     output << "auto_update " << (impl_->auto_update ? 1 : 0) << '\n';
     output << "aspect " << impl_->aspect_mode << '\n';
     output << "speed " << impl_->emulation_speed_percent << '\n';
+}
+
+void Frontend::ApplyPresentationSettings() {
+    if (!impl_->renderer)
+        return;
+
+    SDL_SetRenderLogicalPresentation(
+        impl_->renderer,
+        LogicalWidth,
+        LogicalHeight,
+        impl_->integer_scale
+            ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+            : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+
+    SDL_SetRenderVSync(
+        impl_->renderer,
+        impl_->vsync ? 1 : SDL_RENDERER_VSYNC_DISABLED);
 }
 
 void Frontend::OpenFolderDialog() {
@@ -490,14 +499,24 @@ void Frontend::HandleSettingsClick(float x, float y) {
 
     switch (impl_->settings_section) {
     case SettingsSection::General:
-        if (Contains(x, y, SDL_FRect{content_x, 150, 620, 42}))
+        if (Contains(x, y, SDL_FRect{content_x, 150, 620, 42})) {
             ToggleValue(impl_->fullscreen);
-        else if (Contains(x, y, SDL_FRect{content_x, 202, 620, 42}))
+            SDL_SetWindowFullscreen(impl_->window, impl_->fullscreen);
+            SaveConfig();
+        } else if (Contains(x, y, SDL_FRect{content_x, 202, 620, 42})) {
             ToggleValue(impl_->vsync);
-        else if (Contains(x, y, SDL_FRect{content_x, 254, 620, 42}))
+            ApplyPresentationSettings();
+            SaveConfig();
+        }
+        else if (Contains(x, y, SDL_FRect{content_x, 254, 620, 42})) {
             ToggleValue(impl_->auto_update);
-        else if (Contains(x, y, SDL_FRect{content_x, 306, 620, 42}))
+            if (impl_->auto_update)
+                impl_->updater.Refresh();
+            SaveConfig();
+        } else if (Contains(x, y, SDL_FRect{content_x, 306, 620, 42})) {
             ToggleValue(impl_->show_stats);
+            SaveConfig();
+        }
 
         if (Contains(x, y, SDL_FRect{content_x, 358, 620, 42})) {
             impl_->page = Page::Library;
@@ -507,8 +526,11 @@ void Frontend::HandleSettingsClick(float x, float y) {
     case SettingsSection::Graphics:
         if (Contains(x, y, SDL_FRect{content_x, 150, 620, 42}))
             impl_->aspect_mode = (impl_->aspect_mode + 1) % 4;
-        else if (Contains(x, y, SDL_FRect{content_x, 202, 620, 42}))
+        else if (Contains(x, y, SDL_FRect{content_x, 202, 620, 42})) {
             ToggleValue(impl_->integer_scale);
+            ApplyPresentationSettings();
+            SaveConfig();
+        }
         break;
 
     case SettingsSection::Emulation:
