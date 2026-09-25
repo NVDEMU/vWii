@@ -684,11 +684,15 @@ bool DiscImage::ReadPartitionRvz(const PartitionRegion& region,
                                region_size - group.logical_offset));
 
         std::vector<uint8_t> decoded;
-        if (!ReadRvzGroup(group, decoded))
-            return false;
+        if (group.stored_size == 0) {
+            decoded.assign(group.logical_size, 0);
+        } else {
+            if (!ReadRvzGroup(group, decoded))
+                return false;
 
-        if (!StripExceptionLists(decoded, rvz_chunk_size_, group.compressed))
-            return false;
+            if (!StripExceptionLists(decoded, rvz_chunk_size_, group.compressed))
+                return false;
+        }
 
         if (decoded.size() < group.logical_size)
             return false;
