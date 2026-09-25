@@ -54,10 +54,6 @@ uint32_t Mask32(unsigned mb, unsigned me) {
     return mask;
 }
 
-float FPRSingle(uint64_t value) {
-    return static_cast<float>(std::bit_cast<double>(value));
-}
-
 double FPRDouble(uint64_t value) {
     return std::bit_cast<double>(value);
 }
@@ -303,7 +299,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
 
     case 27: { // XORIS
         gpr_[RD(instruction)] =
-            gpr_[RA(instruction)] |
+            gpr_[RA(instruction)] ^
             (static_cast<uint32_t>(UIMM(instruction)) << 16);
         break;
     }
