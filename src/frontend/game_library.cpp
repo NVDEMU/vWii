@@ -111,16 +111,14 @@ void GameLibrary::Save() const {
     if (!folders_file.empty()) {
         std::ofstream output(folders_file, std::ios::trunc);
         for (const auto& folder : folders_)
-            output << folder.string() << '
-';
+            output << folder.string() << '\n';
     }
 
     const auto recent_file = RecentFile();
     if (!recent_file.empty()) {
         std::ofstream output(recent_file, std::ios::trunc);
         for (const auto& path : recent_)
-            output << path.string() << '
-';
+            output << path.string() << '\n';
     }
 }
 
