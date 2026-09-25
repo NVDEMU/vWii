@@ -66,6 +66,7 @@ private:
     disc::DiscImage* disc_{};
     std::array<FileDescriptor, 128> fds_{};
     std::unique_ptr<NandFS> nand_;
+    bool di_partition_open_{};
     bool running_{};
 };
 
