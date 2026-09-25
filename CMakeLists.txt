@@ -18,6 +18,7 @@ set(ZSTD_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
 set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 
 include(FetchContent)
+find_package(Threads REQUIRED)
 
 FetchContent_Declare(
     zstd
@@ -71,6 +72,7 @@ add_library(vwii_core
     src/filesystem/wii_fst.cpp
     src/frontend/frontend.cpp
     src/frontend/keyboard_bindings.cpp
+    src/frontend/update_checker.cpp
     src/video/video_backend.cpp
 )
 
@@ -78,6 +80,18 @@ target_include_directories(vwii_core
     PUBLIC
         ${PROJECT_SOURCE_DIR}/src
 )
+
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE VWII_GIT_SHA
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+if(NOT VWII_GIT_SHA)
+    set(VWII_GIT_SHA "unknown")
+endif()
 
 if(TARGET libzstd_static)
     set(VWII_ZSTD_TARGET libzstd_static)
@@ -87,13 +101,19 @@ else()
     message(FATAL_ERROR "Zstandard static target was not created")
 endif()
 
-target_link_libraries(vwii_core PRIVATE ${VWII_ZSTD_TARGET} SDL3::SDL3)
+target_link_libraries(vwii_core
+    PRIVATE
+        ${VWII_ZSTD_TARGET}
+        SDL3::SDL3
+        Threads::Threads
+)
 
 target_compile_definitions(vwii_core
     PUBLIC
         VWII_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
         VWII_VERSION_MINOR=${PROJECT_VERSION_MINOR}
         VWII_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+        VWII_GIT_SHA="${VWII_GIT_SHA}"
 )
 
 add_executable(vwii
