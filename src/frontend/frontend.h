@@ -43,10 +43,13 @@ public:
     void Shutdown();
     [[nodiscard]] bool PumpEvents(input::WiiRemoteKeyboard* wiimote = nullptr,
                                    float delta_seconds = 0.016f);
+    [[nodiscard]] bool SettingsOpen() const;
     [[nodiscard]] std::string ConsumeDroppedFile();
     void Present(const Status& status, const memory::Memory* memory = nullptr);
 
 private:
+    void RenderSettings();
+
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
