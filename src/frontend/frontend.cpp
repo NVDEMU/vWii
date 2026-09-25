@@ -1,14 +1,46 @@
 #include "frontend/frontend.h"
 
+#include "memory/memory.h"
+
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
+#include <vector>
 
 namespace vwii::frontend {
+
+namespace {
+
+uint8_t ClampByte(float value) {
+    return static_cast<uint8_t>(
+        std::clamp(value, 0.0f, 255.0f));
+}
+
+void YuvToRgb(uint8_t y, uint8_t u, uint8_t v,
+              uint8_t& r, uint8_t& g, uint8_t& b) {
+    const float yf = static_cast<float>(y);
+    const float uf = static_cast<float>(u) - 128.0f;
+    const float vf = static_cast<float>(v) - 128.0f;
+
+    r = ClampByte(1.164f * (yf - 16.0f) + 1.596f * vf);
+    g = ClampByte(1.164f * (yf - 16.0f) - 0.392f * uf - 0.813f * vf);
+    b = ClampByte(1.164f * (yf - 16.0f) + 2.017f * uf);
+}
+
+} // namespace
 
 struct Frontend::Impl {
     SDL_Window* window{};
     SDL_Renderer* renderer{};
+    SDL_Texture* xfb_texture{};
+
+    int xfb_width{};
+    int xfb_height{};
+
+    std::vector<uint8_t> xfb_raw;
+    std::vector<uint8_t> rgba;
     std::string dropped_file;
 };
 
@@ -50,6 +82,11 @@ void Frontend::Shutdown() {
     if (!impl_)
         return;
 
+    if (impl_->xfb_texture) {
+        SDL_DestroyTexture(impl_->xfb_texture);
+        impl_->xfb_texture = nullptr;
+    }
+
     if (impl_->renderer) {
         SDL_DestroyRenderer(impl_->renderer);
         impl_->renderer = nullptr;
@@ -87,41 +124,191 @@ std::string Frontend::ConsumeDroppedFile() {
     return result;
 }
 
-void Frontend::Present(const Status& status) {
+void Frontend::Present(const Status& status, const memory::Memory* memory) {
     if (!impl_->renderer)
         return;
 
-    int width = 0;
-    int height = 0;
-    SDL_GetRenderOutputSize(impl_->renderer, &width, &height);
+    int window_width = 0;
+    int window_height = 0;
+    SDL_GetRenderOutputSize(
+        impl_->renderer,
+        &window_width,
+        &window_height);
 
     SDL_SetRenderDrawColor(impl_->renderer, 8, 10, 14, 255);
     SDL_RenderClear(impl_->renderer);
 
-    // Until GX/VI are implemented, show an emulator status surface rather
-    // than pretending that the black image is a rendered Wii framebuffer.
+    const bool valid_xfb =
+        memory != nullptr &&
+        status.loaded &&
+        status.xfb_address != 0 &&
+        status.xfb_width >= 2 &&
+        status.xfb_width <= 1024 &&
+        status.xfb_height >= 2 &&
+        status.xfb_height <= 1024 &&
+        status.xfb_stride >= status.xfb_width * 2 &&
+        status.xfb_stride <= 8192;
+
+    if (valid_xfb) {
+        try {
+            const std::size_t raw_size =
+                static_cast<std::size_t>(status.xfb_stride) *
+                status.xfb_height;
+
+            const std::size_t rgba_size =
+                static_cast<std::size_t>(status.xfb_width) *
+                status.xfb_height * 4;
+
+            impl_->xfb_raw.resize(raw_size);
+            impl_->rgba.resize(rgba_size);
+
+            memory->ReadBlock(
+                status.xfb_address,
+                std::span<uint8_t>(impl_->xfb_raw.data(), impl_->xfb_raw.size()));
+
+            for (uint32_t y = 0; y < status.xfb_height; ++y) {
+                const uint8_t* source =
+                    impl_->xfb_raw.data() +
+                    static_cast<std::size_t>(y) * status.xfb_stride;
+
+                uint8_t* destination =
+                    impl_->rgba.data() +
+                    static_cast<std::size_t>(y) * status.xfb_width * 4;
+
+                for (uint32_t x = 0; x < status.xfb_width; x += 2) {
+                    const std::size_t source_index =
+                        static_cast<std::size_t>(x) * 2;
+
+                    const uint8_t y0 = source[source_index];
+                    const uint8_t u = source[source_index + 1];
+                    const uint8_t y1 =
+                        x + 1 < status.xfb_width
+                            ? source[source_index + 2]
+                            : y0;
+                    const uint8_t v =
+                        x + 1 < status.xfb_width
+                            ? source[source_index + 3]
+                            : u;
+
+                    uint8_t r0, g0, b0;
+                    uint8_t r1, g1, b1;
+
+                    YuvToRgb(y0, u, v, r0, g0, b0);
+                    YuvToRgb(y1, u, v, r1, g1, b1);
+
+                    const std::size_t d0 =
+                        static_cast<std::size_t>(x) * 4;
+
+                    destination[d0 + 0] = r0;
+                    destination[d0 + 1] = g0;
+                    destination[d0 + 2] = b0;
+                    destination[d0 + 3] = 255;
+
+                    if (x + 1 < status.xfb_width) {
+                        const std::size_t d1 = d0 + 4;
+                        destination[d1 + 0] = r1;
+                        destination[d1 + 1] = g1;
+                        destination[d1 + 2] = b1;
+                        destination[d1 + 3] = 255;
+                    }
+                }
+            }
+
+            if (!impl_->xfb_texture ||
+                impl_->xfb_width != static_cast<int>(status.xfb_width) ||
+                impl_->xfb_height != static_cast<int>(status.xfb_height)) {
+                if (impl_->xfb_texture) {
+                    SDL_DestroyTexture(impl_->xfb_texture);
+                    impl_->xfb_texture = nullptr;
+                }
+
+                impl_->xfb_texture = SDL_CreateTexture(
+                    impl_->renderer,
+                    SDL_PIXELFORMAT_RGBA8888,
+                    SDL_TEXTUREACCESS_STREAMING,
+                    static_cast<int>(status.xfb_width),
+                    static_cast<int>(status.xfb_height));
+
+                if (impl_->xfb_texture) {
+                    impl_->xfb_width = static_cast<int>(status.xfb_width);
+                    impl_->xfb_height = static_cast<int>(status.xfb_height);
+                }
+            }
+
+            if (impl_->xfb_texture) {
+                SDL_UpdateTexture(
+                    impl_->xfb_texture,
+                    nullptr,
+                    impl_->rgba.data(),
+                    static_cast<int>(status.xfb_width * 4));
+
+                const float framebuffer_aspect =
+                    static_cast<float>(status.xfb_width) /
+                    static_cast<float>(status.xfb_height);
+
+                const float window_aspect =
+                    window_height > 0
+                        ? static_cast<float>(window_width) /
+                          static_cast<float>(window_height)
+                        : framebuffer_aspect;
+
+                SDL_FRect destination{};
+
+                if (window_aspect > framebuffer_aspect) {
+                    destination.h = static_cast<float>(window_height);
+                    destination.w = destination.h * framebuffer_aspect;
+                    destination.x =
+                        (static_cast<float>(window_width) - destination.w) / 2.0f;
+                    destination.y = 0.0f;
+                } else {
+                    destination.w = static_cast<float>(window_width);
+                    destination.h = destination.w / framebuffer_aspect;
+                    destination.x = 0.0f;
+                    destination.y =
+                        (static_cast<float>(window_height) - destination.h) / 2.0f;
+                }
+
+                SDL_RenderTexture(
+                    impl_->renderer,
+                    impl_->xfb_texture,
+                    nullptr,
+                    &destination);
+                SDL_RenderPresent(impl_->renderer);
+                return;
+            }
+        } catch (const std::out_of_range&) {
+            // Invalid XFB addresses remain a normal early-compatibility failure.
+        }
+    }
+
+    // Fallback status surface until a title produces a usable XFB.
     SDL_SetRenderDrawColor(impl_->renderer, 35, 39, 48, 255);
+
     const SDL_FRect panel{
         32.0f,
         32.0f,
-        static_cast<float>(width > 64 ? width - 64 : 1),
+        static_cast<float>(window_width > 64 ? window_width - 64 : 1),
         128.0f
     };
+
     SDL_RenderFillRect(impl_->renderer, &panel);
 
     const uint32_t pc = status.pc;
-    const int bar_width = width > 80 ? width - 80 : 1;
+    const int bar_width = window_width > 80 ? window_width - 80 : 1;
     const int progress = static_cast<int>(
-        (static_cast<uint64_t>(pc & 0x00FFFFFFu) * static_cast<uint64_t>(bar_width)) /
+        (static_cast<uint64_t>(pc & 0x00FFFFFFu) *
+         static_cast<uint64_t>(bar_width)) /
         0x01000000u);
 
     SDL_SetRenderDrawColor(impl_->renderer, 75, 145, 220, 255);
+
     const SDL_FRect pc_bar{
         40.0f,
         80.0f,
         static_cast<float>(progress > 0 ? progress : 1),
         16.0f
     };
+
     SDL_RenderFillRect(impl_->renderer, &pc_bar);
 
     SDL_SetRenderDrawColor(
@@ -137,8 +324,8 @@ void Frontend::Present(const Status& status) {
         static_cast<float>(bar_width > 1 ? bar_width : 1),
         12.0f
     };
-    SDL_RenderFillRect(impl_->renderer, &state_bar);
 
+    SDL_RenderFillRect(impl_->renderer, &state_bar);
     SDL_RenderPresent(impl_->renderer);
 }
 
