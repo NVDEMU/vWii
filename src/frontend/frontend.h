@@ -45,6 +45,8 @@ public:
                                    float delta_seconds = 0.016f);
     [[nodiscard]] bool SettingsOpen() const;
     [[nodiscard]] std::string ConsumeDroppedFile();
+    [[nodiscard]] std::string ConsumeLaunchFile();
+    [[nodiscard]] uint64_t InstructionBudget() const;
     void Present(const Status& status, const memory::Memory* memory = nullptr);
 
 private:
