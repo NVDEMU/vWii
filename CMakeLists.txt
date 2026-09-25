@@ -67,6 +67,7 @@ add_library(vwii_core
     src/system/scheduler.cpp
     src/ios/ios_hle.cpp
     src/ios/nand_fs.cpp
+    src/input/wiimote_keyboard.cpp
     src/filesystem/wii_fst.cpp
     src/frontend/frontend.cpp
     src/video/video_backend.cpp
