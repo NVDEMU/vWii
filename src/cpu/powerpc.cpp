@@ -4,6 +4,7 @@
 
 #include <bit>
 #include <cstdint>
+#include <stdexcept>
 #include <cmath>
 
 namespace vwii::cpu {
@@ -137,12 +138,14 @@ bool PowerPC::ConditionBit(unsigned bo, unsigned bi) const {
 
 uint32_t PowerPC::ReadSPR(unsigned spr) const {
     switch (spr) {
-    case 1:  return xer_;
-    case 8:  return lr_;
-    case 9:  return ctr_;
-    case 26: return srr0_;
-    case 27: return srr1_;
-    default: return 0;
+    case 1:   return xer_;
+    case 8:   return lr_;
+    case 9:   return ctr_;
+    case 26:  return srr0_;
+    case 27:  return srr1_;
+    case 268: return static_cast<uint32_t>(timebase_);
+    case 269: return static_cast<uint32_t>(timebase_ >> 32);
+    default:  return 0;
     }
 }
 
@@ -178,7 +181,7 @@ void PowerPC::Step() {
         const uint32_t instruction = memory_.Read32(cia);
         pc_ += 4;
         Execute(instruction, cia);
-    } catch (...) {
+    } catch (const std::out_of_range&) {
         RaiseException(0x300, 0);
     }
 
@@ -264,9 +267,13 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         break;
     }
 
-    case 17: // SC
+    case 17: { // SC
+        // Broadway software generally performs IOS communication through
+        // the Hollywood IPC engine. SC still has to create the PPC program
+        // exception so the guest handler can service the trap.
         RaiseException(0xC00, 0);
         break;
+    }
 
     case 18: { // B / BL
         const int32_t displacement = BranchDisp(instruction);
