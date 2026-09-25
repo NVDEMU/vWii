@@ -1,5 +1,8 @@
 #include "core/emulator.h"
 
+#include <array>
+#include <vector>
+
 namespace vwii::core {
 
 Emulator::Emulator()
@@ -106,6 +109,26 @@ boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
 
     disc_ = std::move(candidate);
     ios_.AttachDisc(disc_.get());
+
+    // Populate the small set of early Wii system globals normally prepared
+    // by the boot chain/apploader. These are documented in the Wii memory map.
+    if (result.disc.game_id.size() >= 6) {
+        memory_.WriteBlock(
+            0x80000000,
+            std::span<const uint8_t>(
+                reinterpret_cast<const uint8_t*>(result.disc.game_id.data()), 6));
+    }
+
+    memory_.Write32(0x800000F0, memory::Memory::MEM1_SIZE);
+    memory_.Write32(0x800000F8, 0x0E7BE2C0);
+    memory_.Write32(0x800000FC, 0x2B73A840);
+    memory_.Write8(0x8000319C, 0x80);
+
+    std::array<uint8_t, 0x2000> bi2{};
+    if (disc_->ReadGamePartition(0x440, bi2.data(), bi2.size())) {
+        memory_.WriteBlock(0x817FDF80, bi2);
+        memory_.Write32(0x800000F4, 0x817FDF80);
+    }
 
     cpu_.Reset(result.dol_result.entry_point);
     loaded_image_ = true;
