@@ -1063,8 +1063,11 @@ void Frontend::RenderSidebar() {
          "CTRL+L  ADD FOLDER", Muted);
     Text(impl_->renderer, 28, 646,
          "F12     SETTINGS", Muted);
-    Text(impl_->renderer, 28, 678,
-         Shorten(impl_->status_message, 28), Success);
+    const bool error = impl_->status_message.rfind("Launch failed:", 0) == 0;
+    Text(
+        impl_->renderer, 28, 678,
+        Shorten(impl_->status_message, 28),
+        error ? Danger : Success);
 }
 
 void Frontend::RenderLibrary(const Status& status) {
