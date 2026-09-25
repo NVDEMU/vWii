@@ -110,6 +110,12 @@ boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
     disc_ = std::move(candidate);
     ios_.AttachDisc(disc_.get());
 
+    // Parse the game FST early so IOS/boot code can reuse it.
+    if (!game_fst_.Load(*disc_)) {
+        // Keep booting for now; some early compatibility tests intentionally
+        // use incomplete images.
+    }
+
     // Populate the small set of early Wii system globals normally prepared
     // by the boot chain/apploader. These are documented in the Wii memory map.
     if (result.disc.game_id.size() >= 6) {
