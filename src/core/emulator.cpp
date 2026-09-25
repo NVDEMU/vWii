@@ -38,6 +38,9 @@ void Emulator::Reset() {
 
     disc_.reset();
     loaded_image_ = false;
+
+    if (initialized_)
+        ScheduleVideoInterrupt();
 }
 
 void Emulator::ScheduleVideoInterrupt() {
