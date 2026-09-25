@@ -2,6 +2,9 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
+
+#include "ios/nand_fs.h"
 #include <string>
 
 namespace vwii::disc {
@@ -26,6 +29,8 @@ public:
     bool Tick();
 
     [[nodiscard]] bool IsRunning() const { return running_; }
+
+    void SetNandRoot(const std::string& root);
 
 private:
     struct FileDescriptor {
@@ -60,6 +65,7 @@ private:
     memory::Memory& memory_;
     disc::DiscImage* disc_{};
     std::array<FileDescriptor, 32> fds_{};
+    std::unique_ptr<NandFS> nand_;
     bool running_{};
 };
 
