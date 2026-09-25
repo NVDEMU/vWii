@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(vWii
-    VERSION 0.2.0
+    VERSION 0.3.0
     LANGUAGES CXX
     DESCRIPTION "Wii emulator for Windows and macOS"
 )
@@ -111,5 +111,7 @@ if(APPLE)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "vWii"
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.nvdemu.vwii"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     )
 endif()
