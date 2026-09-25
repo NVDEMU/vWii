@@ -5,6 +5,7 @@
 #include "cpu/powerpc.h"
 #include "disc/disc_image.h"
 #include "ios/ios_hle.h"
+#include "input/wiimote_keyboard.h"
 #include "filesystem/wii_fst.h"
 #include "memory/memory.h"
 #include "system/scheduler.h"
@@ -34,6 +35,7 @@ public:
     [[nodiscard]] cpu::PowerPC& CPU() { return cpu_; }
     [[nodiscard]] memory::Memory& Memory() { return memory_; }
     [[nodiscard]] ios::IOSHLE& IOS() { return ios_; }
+    [[nodiscard]] input::WiiRemoteKeyboard& Wiimote() { return wiimote_; }
     [[nodiscard]] system::Scheduler& Scheduler() { return scheduler_; }
     [[nodiscard]] filesystem::WiiFST& GameFST() { return game_fst_; }
 
@@ -44,6 +46,7 @@ public:
 private:
     memory::Memory memory_;
     cpu::PowerPC cpu_;
+    input::WiiRemoteKeyboard wiimote_;
     ios::IOSHLE ios_;
     system::Scheduler scheduler_;
 
