@@ -28,6 +28,7 @@ add_library(vwii_core
     src/core/emulator.cpp
     src/cpu/powerpc.cpp
     src/memory/memory.cpp
+    src/boot/image_loader.cpp
     src/video/video_backend.cpp
 )
 
