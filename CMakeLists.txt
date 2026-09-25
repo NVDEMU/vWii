@@ -47,6 +47,8 @@ add_library(vwii_core
     src/boot/image_loader.cpp
     src/boot/wii_game.cpp
     src/disc/disc_image.cpp
+    src/hardware/hollywood.cpp
+    src/system/scheduler.cpp
     src/video/video_backend.cpp
 )
 
