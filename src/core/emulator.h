@@ -50,6 +50,8 @@ private:
     std::unique_ptr<disc::DiscImage> disc_;
     filesystem::WiiFST game_fst_;
 
+    void ScheduleVideoInterrupt();
+
     bool initialized_{};
     bool loaded_image_{};
 };
