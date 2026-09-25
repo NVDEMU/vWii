@@ -2,6 +2,7 @@
 
 #include "memory/memory.h"
 #include "input/wiimote_keyboard.h"
+#include "frontend/keyboard_bindings.h"
 
 #include <SDL3/SDL.h>
 
@@ -44,6 +45,11 @@ struct Frontend::Impl {
     std::vector<uint8_t> xfb_raw;
     std::vector<uint8_t> rgba;
     std::string dropped_file;
+
+    KeyboardBindings keyboard_bindings;
+    bool settings_open{};
+    bool remap_waiting{};
+    std::size_t selected_binding{};
 };
 
 Frontend::Frontend()
@@ -77,6 +83,7 @@ bool Frontend::Initialize(const char* title, int width, int height) {
         return false;
     }
 
+    impl_->keyboard_bindings.Load();
     return true;
 }
 
@@ -104,291 +111,23 @@ void Frontend::Shutdown() {
 
 namespace {
 
-void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
-                   SDL_Scancode scancode, bool pressed) {
-    if (!wiimote)
-        return;
-
-    auto send = [&](input::Key key) {
-        wiimote->KeyEvent(key, pressed);
-    };
-
-    switch (scancode) {
-    case SDL_SCANCODE_UP: send(input::Key::DpadUp); break;
-    case SDL_SCANCODE_DOWN: send(input::Key::DpadDown); break;
-    case SDL_SCANCODE_LEFT: send(input::Key::DpadLeft); break;
-    case SDL_SCANCODE_RIGHT: send(input::Key::DpadRight); break;
-    case SDL_SCANCODE_SPACE: send(input::Key::A); break;
-    case SDL_SCANCODE_RCTRL: send(input::Key::B); break;
-    case SDL_SCANCODE_Z: send(input::Key::One); break;
-    case SDL_SCANCODE_X: send(input::Key::Two); break;
-    case SDL_SCANCODE_EQUALS: send(input::Key::Plus); break;
-    case SDL_SCANCODE_MINUS: send(input::Key::Minus); break;
-    case SDL_SCANCODE_BACKSPACE: send(input::Key::Home); break;
-
-    case SDL_SCANCODE_KP_8: send(input::Key::IRUp); break;
-    case SDL_SCANCODE_KP_2: send(input::Key::IRDown); break;
-    case SDL_SCANCODE_KP_4: send(input::Key::IRLeft); break;
-    case SDL_SCANCODE_KP_6: send(input::Key::IRRight); break;
-    case SDL_SCANCODE_KP_5: send(input::Key::IRCenter); break;
-    case SDL_SCANCODE_KP_7: send(input::Key::IRZoomOut); break;
-    case SDL_SCANCODE_KP_9: send(input::Key::IRZoomIn); break;
-
-    case SDL_SCANCODE_W: send(input::Key::NunchukUp); break;
-    case SDL_SCANCODE_S: send(input::Key::NunchukDown); break;
-    case SDL_SCANCODE_A: send(input::Key::NunchukLeft); break;
-    case SDL_SCANCODE_D: send(input::Key::NunchukRight); break;
-    case SDL_SCANCODE_Q: send(input::Key::NunchukC); break;
-    case SDL_SCANCODE_E: send(input::Key::NunchukZ); break;
-
-    case SDL_SCANCODE_I: send(input::Key::ClassicUp); break;
-    case SDL_SCANCODE_K: send(input::Key::ClassicDown); break;
-    case SDL_SCANCODE_J: send(input::Key::ClassicLeft); break;
-    case SDL_SCANCODE_L: send(input::Key::ClassicRight); break;
-    case SDL_SCANCODE_U: send(input::Key::ClassicA); break;
-    case SDL_SCANCODE_O: send(input::Key::ClassicB); break;
-    case SDL_SCANCODE_P: send(input::Key::ClassicX); break;
-    case SDL_SCANCODE_LEFTBRACKET: send(input::Key::ClassicY); break;
-    case SDL_SCANCODE_N: send(input::Key::ClassicL); break;
-    case SDL_SCANCODE_M: send(input::Key::ClassicR); break;
-    case SDL_SCANCODE_COMMA: send(input::Key::ClassicZL); break;
-    case SDL_SCANCODE_PERIOD: send(input::Key::ClassicZR); break;
-
-    case SDL_SCANCODE_F1: send(input::Key::ExtensionNone); break;
-    case SDL_SCANCODE_F2: send(input::Key::ExtensionNunchuk); break;
-    case SDL_SCANCODE_F3: send(input::Key::ExtensionClassic); break;
-    case SDL_SCANCODE_F4: send(input::Key::ExtensionGuitar); break;
-    case SDL_SCANCODE_F5: send(input::Key::ExtensionDrums); break;
-    case SDL_SCANCODE_F6: send(input::Key::ExtensionTurntable); break;
-    case SDL_SCANCODE_F7: send(input::Key::ExtensionUDraw); break;
-    case SDL_SCANCODE_F8: send(input::Key::ExtensionDrawsome); break;
-    case SDL_SCANCODE_F9: send(input::Key::ExtensionTaTaCon); break;
-    case SDL_SCANCODE_F10: send(input::Key::ToggleMotionPlus); break;
-    case SDL_SCANCODE_F11: send(input::Key::ExtensionShinkansen); break;
-    default: break;
-    }
-
-    switch (scancode) {
-    case SDL_SCANCODE_1:
-        send(input::Key::One);
-        send(input::Key::GuitarGreen);
-        send(input::Key::DrumRed);
-        break;
-    case SDL_SCANCODE_2:
-        send(input::Key::Two);
-        send(input::Key::GuitarRed);
-        send(input::Key::DrumYellow);
-        break;
-    case SDL_SCANCODE_3:
-        send(input::Key::GuitarYellow);
-        send(input::Key::DrumBlue);
-        break;
-    case SDL_SCANCODE_4:
-        send(input::Key::GuitarBlue);
-        send(input::Key::DrumGreen);
-        break;
-    case SDL_SCANCODE_5:
-        send(input::Key::GuitarOrange);
-        send(input::Key::DrumOrange);
-        break;
-    case SDL_SCANCODE_6:
-        send(input::Key::DrumRed);
-        break;
-    case SDL_SCANCODE_7:
-        send(input::Key::DrumYellow);
-        break;
-    case SDL_SCANCODE_8:
-        send(input::Key::DrumBlue);
-        break;
-    case SDL_SCANCODE_9:
-        send(input::Key::DrumGreen);
-        send(input::Key::ClassicMinus);
-        break;
-    case SDL_SCANCODE_0:
-        send(input::Key::DrumOrange);
-        send(input::Key::ClassicPlus);
-        break;
-    default:
-        break;
-    }
-
-    switch (scancode) {
-    case SDL_SCANCODE_G:
-        send(input::Key::GuitarStrumUp);
-        send(input::Key::TurntableRed);
-        send(input::Key::ShinkansenBrake);
-        break;
-    case SDL_SCANCODE_H:
-        send(input::Key::GuitarStrumDown);
-        send(input::Key::TurntableBlue);
-        send(input::Key::ShinkansenHorn);
-        break;
-    case SDL_SCANCODE_T:
-        send(input::Key::GuitarWhammyDown);
-        send(input::Key::AccelYNegative);
-        break;
-    case SDL_SCANCODE_Y:
-        send(input::Key::GuitarWhammyUp);
-        send(input::Key::AccelZPositive);
-        break;
-    case SDL_SCANCODE_F:
-        send(input::Key::TurntableGreen);
-        send(input::Key::AccelYPositive);
-        send(input::Key::ShinkansenThrottleDown);
-        break;
-    case SDL_SCANCODE_R:
-        send(input::Key::AccelYPositive);
-        send(input::Key::ShinkansenThrottleUp);
-        break;
-    case SDL_SCANCODE_V:
-        send(input::Key::TaTaConHit);
-        send(input::Key::ShinkansenBrake);
-        break;
-    case SDL_SCANCODE_B:
-        send(input::Key::TaTaConRim);
-        break;
-    default:
-        break;
-    }
-
-    switch (scancode) {
-    case SDL_SCANCODE_SEMICOLON:
-        send(input::Key::UDrawUp);
-        send(input::Key::DrawsomeUp);
-        break;
-    case SDL_SCANCODE_SLASH:
-        send(input::Key::UDrawDown);
-        send(input::Key::DrawsomeDown);
-        break;
-    case SDL_SCANCODE_APOSTROPHE:
-        send(input::Key::UDrawPen);
-        send(input::Key::DrawsomePen);
-        break;
-    case SDL_SCANCODE_RIGHTBRACKET:
-        send(input::Key::UDrawA);
-        send(input::Key::DrawsomeA);
-        break;
-    case SDL_SCANCODE_LEFTBRACKET:
-        send(input::Key::UDrawB);
-        send(input::Key::DrawsomeB);
-        send(input::Key::ClassicY);
-        break;
-    case SDL_SCANCODE_COMMA:
-        send(input::Key::UDrawLeft);
-        send(input::Key::DrawsomeLeft);
-        send(input::Key::TurntableCrossfadeLeft);
-        send(input::Key::ClassicZL);
-        break;
-    case SDL_SCANCODE_PERIOD:
-        send(input::Key::UDrawRight);
-        send(input::Key::DrawsomeRight);
-        send(input::Key::TurntableCrossfadeRight);
-        send(input::Key::ClassicZR);
-        break;
-    case SDL_SCANCODE_6:
-        send(input::Key::ClassicHome);
-        send(input::Key::DrumRed);
-        break;
-    default:
-        break;
-    }
-
-    switch (scancode) {
-    case SDL_SCANCODE_I: send(input::Key::MotionPitchUp); break;
-    case SDL_SCANCODE_K: send(input::Key::MotionPitchDown); break;
-    case SDL_SCANCODE_J: send(input::Key::MotionYawLeft); break;
-    case SDL_SCANCODE_L: send(input::Key::MotionYawRight); break;
-    case SDL_SCANCODE_U: send(input::Key::MotionRollLeft); break;
-    case SDL_SCANCODE_O: send(input::Key::MotionRollRight); break;
-    case SDL_SCANCODE_T: send(input::Key::AccelXNegative); break;
-    case SDL_SCANCODE_G: send(input::Key::AccelXPositive); break;
-    case SDL_SCANCODE_R: send(input::Key::AccelYPositive); break;
-    case SDL_SCANCODE_F: send(input::Key::AccelYNegative); break;
-    case SDL_SCANCODE_Y: send(input::Key::AccelZPositive); break;
-    case SDL_SCANCODE_H: send(input::Key::AccelZNegative); break;
-    case SDL_SCANCODE_Q: send(input::Key::Shake); break;
-    default: break;
-    }
+void SendMappedKey(const KeyboardBindings& bindings,
+                   input::WiiRemoteKeyboard* wiimote,
+                   SDL_Scancode scancode,
+                   bool pressed) {
+    bindings.Send(wiimote, scancode, pressed);
 }
 
-bool IsMappedKey(SDL_Scancode scancode) {
-    switch (scancode) {
-    case SDL_SCANCODE_UP:
-    case SDL_SCANCODE_DOWN:
-    case SDL_SCANCODE_LEFT:
-    case SDL_SCANCODE_RIGHT:
-    case SDL_SCANCODE_SPACE:
-    case SDL_SCANCODE_RCTRL:
-    case SDL_SCANCODE_Z:
-    case SDL_SCANCODE_X:
-    case SDL_SCANCODE_EQUALS:
-    case SDL_SCANCODE_MINUS:
-    case SDL_SCANCODE_BACKSPACE:
-    case SDL_SCANCODE_KP_8:
-    case SDL_SCANCODE_KP_2:
-    case SDL_SCANCODE_KP_4:
-    case SDL_SCANCODE_KP_6:
-    case SDL_SCANCODE_KP_5:
-    case SDL_SCANCODE_KP_7:
-    case SDL_SCANCODE_KP_9:
-    case SDL_SCANCODE_W:
-    case SDL_SCANCODE_S:
-    case SDL_SCANCODE_A:
-    case SDL_SCANCODE_D:
-    case SDL_SCANCODE_Q:
-    case SDL_SCANCODE_E:
-    case SDL_SCANCODE_I:
-    case SDL_SCANCODE_K:
-    case SDL_SCANCODE_J:
-    case SDL_SCANCODE_L:
-    case SDL_SCANCODE_U:
-    case SDL_SCANCODE_O:
-    case SDL_SCANCODE_P:
-    case SDL_SCANCODE_LEFTBRACKET:
-    case SDL_SCANCODE_N:
-    case SDL_SCANCODE_M:
-    case SDL_SCANCODE_COMMA:
-    case SDL_SCANCODE_PERIOD:
-    case SDL_SCANCODE_0:
-    case SDL_SCANCODE_1:
-    case SDL_SCANCODE_2:
-    case SDL_SCANCODE_3:
-    case SDL_SCANCODE_4:
-    case SDL_SCANCODE_5:
-    case SDL_SCANCODE_6:
-    case SDL_SCANCODE_7:
-    case SDL_SCANCODE_8:
-    case SDL_SCANCODE_9:
-    case SDL_SCANCODE_B:
-    case SDL_SCANCODE_F:
-    case SDL_SCANCODE_G:
-    case SDL_SCANCODE_H:
-    case SDL_SCANCODE_R:
-    case SDL_SCANCODE_T:
-    case SDL_SCANCODE_V:
-    case SDL_SCANCODE_Y:
-    case SDL_SCANCODE_APOSTROPHE:
-    case SDL_SCANCODE_SEMICOLON:
-    case SDL_SCANCODE_SLASH:
-    case SDL_SCANCODE_RIGHTBRACKET:
-    case SDL_SCANCODE_F1:
-    case SDL_SCANCODE_F2:
-    case SDL_SCANCODE_F3:
-    case SDL_SCANCODE_F4:
-    case SDL_SCANCODE_F5:
-    case SDL_SCANCODE_F6:
-    case SDL_SCANCODE_F7:
-    case SDL_SCANCODE_F8:
-    case SDL_SCANCODE_F9:
-    case SDL_SCANCODE_F10:
-    case SDL_SCANCODE_F11:
-        return true;
-    default:
-        return false;
-    }
+const char* ScancodeLabel(SDL_Scancode scancode) {
+    if (scancode == SDL_SCANCODE_UNKNOWN)
+        return "Unbound";
+
+    const char* name = SDL_GetScancodeName(scancode);
+    return (name && *name) ? name : "Unknown";
 }
 
 } // namespace
+
 
 bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
                           float delta_seconds) {
@@ -401,31 +140,194 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
         if (event.type == SDL_EVENT_DROP_FILE && event.drop.data)
             impl_->dropped_file = event.drop.data;
 
-        if (wiimote && event.type == SDL_EVENT_KEY_DOWN &&
-            !event.key.repeat && IsMappedKey(event.key.scancode)) {
-            SendMappedKey(wiimote, event.key.scancode, true);
+        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
+            const SDL_Scancode scancode = event.key.scancode;
+
+            if (scancode == SDL_SCANCODE_F12) {
+                impl_->settings_open = !impl_->settings_open;
+                impl_->remap_waiting = false;
+                if (impl_->settings_open)
+                    impl_->keyboard_bindings.ReleaseAll(wiimote);
+                continue;
+            }
+
+            if (impl_->settings_open) {
+                if (impl_->remap_waiting) {
+                    if (scancode == SDL_SCANCODE_ESCAPE) {
+                        impl_->remap_waiting = false;
+                        continue;
+                    }
+
+                    if (scancode != SDL_SCANCODE_F12 &&
+                        scancode != SDL_SCANCODE_UNKNOWN) {
+                        impl_->keyboard_bindings.Set(
+                            impl_->selected_binding, scancode);
+                        impl_->keyboard_bindings.Save();
+                        impl_->remap_waiting = false;
+                    }
+                    continue;
+                }
+
+                const auto& entries = impl_->keyboard_bindings.Entries();
+                if (entries.empty())
+                    continue;
+
+                if (scancode == SDL_SCANCODE_ESCAPE) {
+                    impl_->settings_open = false;
+                } else if (scancode == SDL_SCANCODE_UP) {
+                    if (impl_->selected_binding > 0)
+                        --impl_->selected_binding;
+                } else if (scancode == SDL_SCANCODE_DOWN) {
+                    if (impl_->selected_binding + 1 < entries.size())
+                        ++impl_->selected_binding;
+                } else if (scancode == SDL_SCANCODE_PAGEUP) {
+                    impl_->selected_binding =
+                        impl_->selected_binding > 10
+                            ? impl_->selected_binding - 10
+                            : 0;
+                } else if (scancode == SDL_SCANCODE_PAGEDOWN) {
+                    impl_->selected_binding = std::min(
+                        impl_->selected_binding + 10,
+                        entries.size() - 1);
+                } else if (scancode == SDL_SCANCODE_HOME) {
+                    impl_->selected_binding = 0;
+                } else if (scancode == SDL_SCANCODE_END) {
+                    impl_->selected_binding = entries.size() - 1;
+                } else if (scancode == SDL_SCANCODE_RETURN ||
+                           scancode == SDL_SCANCODE_KP_ENTER) {
+                    impl_->remap_waiting = true;
+                } else if (scancode == SDL_SCANCODE_DELETE) {
+                    impl_->keyboard_bindings.Set(
+                        impl_->selected_binding, SDL_SCANCODE_UNKNOWN);
+                    impl_->keyboard_bindings.Save();
+                } else if (scancode == SDL_SCANCODE_R) {
+                    impl_->keyboard_bindings.Reset(
+                        impl_->selected_binding);
+                    impl_->keyboard_bindings.Save();
+                } else if (scancode == SDL_SCANCODE_F5) {
+                    impl_->keyboard_bindings.ResetAll();
+                    impl_->keyboard_bindings.Save();
+                }
+                continue;
+            }
+
+            if (scancode == SDL_SCANCODE_ESCAPE)
+                return false;
+
+            if (wiimote && impl_->keyboard_bindings.Has(scancode))
+                SendMappedKey(impl_->keyboard_bindings, wiimote,
+                              scancode, true);
         }
 
         if (wiimote && event.type == SDL_EVENT_KEY_UP &&
-            IsMappedKey(event.key.scancode)) {
-            SendMappedKey(wiimote, event.key.scancode, false);
+            !impl_->settings_open &&
+            impl_->keyboard_bindings.Has(event.key.scancode)) {
+            SendMappedKey(impl_->keyboard_bindings, wiimote,
+                          event.key.scancode, false);
         }
-
-        if (event.type == SDL_EVENT_KEY_DOWN &&
-            event.key.scancode == SDL_SCANCODE_ESCAPE)
-            return false;
     }
 
-    if (wiimote)
+    if (wiimote && !impl_->settings_open)
         wiimote->Update(delta_seconds);
 
     return true;
+}
+
+bool Frontend::SettingsOpen() const {
+    return impl_->settings_open;
 }
 
 std::string Frontend::ConsumeDroppedFile() {
     std::string result = std::move(impl_->dropped_file);
     impl_->dropped_file.clear();
     return result;
+}
+
+void Frontend::RenderSettings() {
+    if (!impl_->settings_open || !impl_->renderer)
+        return;
+
+    int width = 0;
+    int height = 0;
+    SDL_GetRenderOutputSize(impl_->renderer, &width, &height);
+
+    SDL_SetRenderDrawColor(impl_->renderer, 15, 18, 24, 255);
+    const SDL_FRect background{
+        24.0f, 24.0f,
+        static_cast<float>(width > 48 ? width - 48 : 1),
+        static_cast<float>(height > 48 ? height - 48 : 1)
+    };
+    SDL_RenderFillRect(impl_->renderer, &background);
+
+    SDL_SetRenderDrawColor(impl_->renderer, 54, 64, 82, 255);
+    const SDL_FRect header{40.0f, 40.0f,
+                           static_cast<float>(width > 80 ? width - 80 : 1),
+                           48.0f};
+    SDL_RenderFillRect(impl_->renderer, &header);
+
+    SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+    SDL_RenderDebugText(impl_->renderer, 56.0f, 56.0f,
+                        "SETTINGS - KEYBOARD CONTROLS");
+
+    const auto& entries = impl_->keyboard_bindings.Entries();
+    constexpr std::size_t VisibleRows = 21;
+    const std::size_t page =
+        impl_->selected_binding / VisibleRows;
+    const std::size_t first = page * VisibleRows;
+    const std::size_t last =
+        std::min(first + VisibleRows, entries.size());
+
+    SDL_RenderDebugText(
+        impl_->renderer,
+        56.0f,
+        96.0f,
+        "UP/DOWN select  PgUp/PgDn page  ENTER remap  DELETE clear  R reset  F5 reset all  F12 close");
+
+    for (std::size_t i = first; i < last; ++i) {
+        const float y = 120.0f +
+                        static_cast<float>(i - first) * 24.0f;
+
+        if (i == impl_->selected_binding) {
+            SDL_SetRenderDrawColor(impl_->renderer, 64, 90, 126, 255);
+            const SDL_FRect row{
+                48.0f,
+                y - 3.0f,
+                static_cast<float>(width > 96 ? width - 96 : 1),
+                20.0f
+            };
+            SDL_RenderFillRect(impl_->renderer, &row);
+            SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+        }
+
+        SDL_RenderDebugTextFormat(
+            impl_->renderer,
+            56.0f,
+            y,
+            "%02u %-34s : %s",
+            static_cast<unsigned>(i + 1),
+            entries[i].name,
+            ScancodeLabel(entries[i].scancode));
+    }
+
+    const float footer_y =
+        static_cast<float>(height > 24 ? height - 24 : 0);
+    SDL_RenderDebugTextFormat(
+        impl_->renderer,
+        48.0f,
+        footer_y,
+        "Bindings %u-%u of %u",
+        static_cast<unsigned>(first + 1),
+        static_cast<unsigned>(last),
+        static_cast<unsigned>(entries.size()));
+
+    if (impl_->remap_waiting) {
+        SDL_SetRenderDrawColor(impl_->renderer, 255, 220, 100, 255);
+        SDL_RenderDebugText(
+            impl_->renderer,
+            56.0f,
+            104.0f,
+            "PRESS A KEY TO ASSIGN IT (ESC cancels)");
+    }
 }
 
 void Frontend::Present(const Status& status, const memory::Memory* memory) {
@@ -577,6 +479,7 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
                     impl_->xfb_texture,
                     nullptr,
                     &destination);
+                RenderSettings();
                 SDL_RenderPresent(impl_->renderer);
                 return;
             }
@@ -630,6 +533,7 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
     };
 
     SDL_RenderFillRect(impl_->renderer, &state_bar);
+    RenderSettings();
     SDL_RenderPresent(impl_->renderer);
 }
 
