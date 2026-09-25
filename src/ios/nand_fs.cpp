@@ -55,7 +55,7 @@ void NandFS::Reset() {
 std::filesystem::path NandFS::Resolve(const std::string& path) const {
     std::string normalized = path;
     while (!normalized.empty() && (normalized.front() == '/' ||
-                                   normalized.front() == '\')) {
+                                   normalized.front() == '\\')) {
         normalized.erase(normalized.begin());
     }
 
@@ -206,7 +206,10 @@ int NandFS::Seek(uint32_t fd, int32_t offset, uint32_t origin) {
         const auto position = handle->readable
             ? handle->stream.tellg()
             : handle->stream.tellp();
-        base = position >= 0 ? position : 0;
+        if (position == std::streampos(-1))
+            base = 0;
+        else
+            base = static_cast<std::streamoff>(position);
     } else if (origin == 2) {
         std::error_code error;
         const auto size = std::filesystem::file_size(handle->path, error);
