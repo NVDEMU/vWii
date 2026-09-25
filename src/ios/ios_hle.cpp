@@ -67,6 +67,7 @@ void IOSHLE::SetNandRoot(const std::string& root) {
 
 void IOSHLE::Reset() {
     nand_->Reset();
+    di_partition_open_ = false;
 
     for (auto& fd : fds_)
         fd = {};
@@ -234,8 +235,10 @@ uint32_t IOSHLE::HandleDI(uint32_t ioctl, uint32_t in_address,
     }
 
     if (ioctl == DI_OPEN_PARTITION) {
-        if (!disc_)
+        if (!disc_ || in_size < 0x20)
             return 0x20;
+
+        di_partition_open_ = true;
         return 1;
     }
 
@@ -267,7 +270,12 @@ uint32_t IOSHLE::HandleDI(uint32_t ioctl, uint32_t in_address,
             return 0x80;
 
         std::vector<uint8_t> data(length);
-        if (!disc_->Read(position, data.data(), data.size()))
+
+        const bool ok = di_partition_open_
+            ? disc_->ReadGamePartition(position, data.data(), data.size())
+            : disc_->Read(position, data.data(), data.size());
+
+        if (!ok)
             return 0x80;
 
         memory_.WriteBlock(out_address, data);
