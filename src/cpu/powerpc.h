@@ -46,7 +46,7 @@ private:
     void SetCR0FromResult(uint32_t value);
     void SetCRField(unsigned field, unsigned value);
     [[nodiscard]] unsigned GetCRBit(unsigned bit) const;
-    [[nodiscard]] bool ConditionBit(unsigned bo, unsigned bi) const;
+    [[nodiscard]] bool ConditionBit(unsigned bo, unsigned bi);
 
     [[nodiscard]] uint32_t ReadBaseRegister(unsigned index) const;
     [[nodiscard]] uint32_t ReadSPR(unsigned spr) const;
