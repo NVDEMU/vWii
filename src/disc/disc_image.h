@@ -105,6 +105,7 @@ private:
     std::size_t game_partition_index_{static_cast<std::size_t>(-1)};
     uint64_t game_partition_disc_offset_{};
     uint64_t game_partition_data_size_{};
+    uint32_t game_partition_first_sector_{};
 };
 
 } // namespace vwii::disc
