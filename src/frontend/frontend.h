@@ -62,6 +62,7 @@ private:
     void RenderSettings();
     void RenderAbout();
     void RenderXfb(const Status& status, const memory::Memory* memory);
+    void ApplyPresentationSettings();
 
     struct Impl;
     std::unique_ptr<Impl> impl_;
