@@ -119,11 +119,19 @@ int main(int argc, char** argv) {
                         status.loaded = true;
                         status.halted = false;
                         instructions = 0;
+                        frontend.SetStatusMessage(
+                            "Loaded " + status.game_id + ".");
                         std::cout << "Loaded " << launch_file
                                   << " (" << status.game_id << ")\n";
                     } else {
+                        const std::string error =
+                            game_result.error.empty()
+                                ? "Unknown boot error"
+                                : game_result.error;
+                        frontend.SetStatusMessage(
+                            "Launch failed: " + error);
                         std::cerr << "Wii boot preparation failed: "
-                                  << game_result.error << "\n";
+                                  << error << "\n";
                     }
                 }
 
@@ -207,11 +215,19 @@ int main(int argc, char** argv) {
                 status.loaded = true;
                 status.halted = false;
                 instructions = 0;
+                frontend.SetStatusMessage(
+                    "Loaded " + status.game_id + ".");
                 std::cout << "Loaded " << requested
                           << " (" << status.game_id << ")\n";
             } else {
+                const std::string error =
+                    result.error.empty()
+                        ? "Unknown boot error"
+                        : result.error;
+                frontend.SetStatusMessage(
+                    "Launch failed: " + error);
                 std::cerr << "Wii boot preparation failed: "
-                          << result.error << "\n";
+                          << error << "\n";
                 status.loaded = false;
             }
         }
