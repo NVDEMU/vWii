@@ -17,13 +17,13 @@ permissions:
   actions: read
 
 concurrency:
-  group: vwii-release-${github.event_name}-${github.event.workflow_run.head_sha}
+  group: vwii-release-${{ github.event_name }}-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
   nightly-release:
     name: Publish nightly build
-    if: ${github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -32,24 +32,24 @@ jobs:
         with:
           name: vWii-Windows-x64
           path: release-assets
-          github-token: ${github.token}
-          repository: ${github.repository}
-          run-id: ${github.event.workflow_run.id}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Download macOS build artifact
         uses: actions/download-artifact@v4
         with:
           name: vWii-macOS
           path: release-assets
-          github-token: ${github.token}
-          repository: ${github.repository}
-          run-id: ${github.event.workflow_run.id}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Publish nightly GitHub Release
         env:
-          GH_TOKEN: ${github.token}
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: nightly
-          SOURCE_SHA: ${github.event.workflow_run.head_sha}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
 
@@ -61,7 +61,7 @@ jobs:
 
   windows:
     name: Windows tagged release build
-    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     runs-on: windows-latest
 
     steps:
@@ -85,18 +85,18 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item build\Release\vwii.exe dist\vwii.exe
-          Compress-Archive -Path dist\vwii.exe -DestinationPath "vWii-$${env:GITHUB_REF_NAME}-Windows-x64.zip"
+          Compress-Archive -Path dist\vwii.exe -DestinationPath "vWii-${env:GITHUB_REF_NAME}-Windows-x64.zip"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: vWii-Windows-x64-tagged
-          path: vWii-${github.ref_name}-Windows-x64.zip
+          path: vWii-${{ github.ref_name }}-Windows-x64.zip
           if-no-files-found: error
 
   macos:
     name: macOS tagged release build
-    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     runs-on: macos-latest
 
     steps:
@@ -128,18 +128,23 @@ jobs:
       - name: Create DMG
         run: |
           set -euo pipefail
-          hdiutil create             -volname "vWii"             -srcfolder dmg-root             -ov             -format UDZO             "vWii-$${GITHUB_REF_NAME}-macOS.dmg"
+          hdiutil create \
+            -volname "vWii" \
+            -srcfolder dmg-root \
+            -ov \
+            -format UDZO \
+            "vWii-${GITHUB_REF_NAME}-macOS.dmg"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: vWii-macOS-tagged
-          path: vWii-${github.ref_name}-macOS.dmg
+          path: vWii-${{ github.ref_name }}-macOS.dmg
           if-no-files-found: error
 
   release:
     name: Publish tagged GitHub Release
-    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     needs:
       - windows
       - macos
@@ -160,7 +165,7 @@ jobs:
 
       - name: Publish GitHub Release
         env:
-          GH_TOKEN: ${github.token}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
