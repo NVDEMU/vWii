@@ -23,6 +23,8 @@ public:
     [[nodiscard]] uint32_t GetCR() const { return cr_; }
     [[nodiscard]] uint32_t GetXER() const { return xer_; }
     [[nodiscard]] uint32_t GetMSR() const { return msr_; }
+    [[nodiscard]] uint32_t GetFPSCR() const { return fpscr_; }
+    [[nodiscard]] uint64_t GetFPR(unsigned index) const { return fpr_.at(index & 31U); }
     [[nodiscard]] uint32_t GetSRR0() const { return srr0_; }
     [[nodiscard]] uint32_t GetSRR1() const { return srr1_; }
     [[nodiscard]] bool Halted() const { return halted_; }
@@ -49,6 +51,7 @@ private:
 
     memory::Memory& memory_;
     std::array<uint32_t, 32> gpr_{};
+    std::array<uint64_t, 32> fpr_{};
 
     uint32_t pc_{0x80000000};
     uint32_t lr_{};
@@ -58,6 +61,7 @@ private:
     uint32_t msr_{};
     uint32_t srr0_{};
     uint32_t srr1_{};
+    uint32_t fpscr_{};
 
     bool halted_{};
 };
