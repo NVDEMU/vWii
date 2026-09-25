@@ -80,9 +80,11 @@ std::string ExtractAssetUrl(const std::string& json,
         const std::string name =
             json.substr(name_start, name_end - name_start);
 
-        const std::size_t object_end = json.find('}', name_end);
-        if (object_end == std::string::npos)
-            break;
+        // An asset object contains a nested uploader object, so using
+        // the first closing brace after the name can stop before
+        // browser_download_url. Bound the search by the next asset name.
+        const std::size_t next_name =
+            json.find("\"name\":\"", name_end + 1);
 
         if (name.size() >= suffix.size() &&
             name.compare(name.size() - suffix.size(),
@@ -92,7 +94,7 @@ std::string ExtractAssetUrl(const std::string& json,
             const std::size_t url_pos =
                 json.find(url_marker, name_end);
             if (url_pos != std::string::npos &&
-                url_pos < object_end) {
+                (next_name == std::string::npos || url_pos < next_name)) {
                 const std::size_t value_start =
                     url_pos + url_marker.size();
                 const std::size_t value_end =
@@ -103,7 +105,10 @@ std::string ExtractAssetUrl(const std::string& json,
             }
         }
 
-        search = object_end + 1;
+        if (next_name == std::string::npos)
+            break;
+
+        search = next_name;
     }
 
     return latest_url;
