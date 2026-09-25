@@ -55,7 +55,15 @@ target_include_directories(vwii_core
         ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(vwii_core PRIVATE libzstd_static)
+if(TARGET libzstd_static)
+    set(VWII_ZSTD_TARGET libzstd_static)
+elseif(TARGET zstd::libzstd_static)
+    set(VWII_ZSTD_TARGET zstd::libzstd_static)
+else()
+    message(FATAL_ERROR "Zstandard static target was not created")
+endif()
+
+target_link_libraries(vwii_core PRIVATE ${VWII_ZSTD_TARGET})
 
 target_compile_definitions(vwii_core
     PUBLIC
