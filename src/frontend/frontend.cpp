@@ -7,6 +7,7 @@ namespace vwii::frontend {
 struct Frontend::Impl {
     SDL_Window* window{};
     SDL_Renderer* renderer{};
+    std::string dropped_file;
 };
 
 Frontend::Frontend()
@@ -67,12 +68,21 @@ bool Frontend::PumpEvents() {
         if (event.type == SDL_EVENT_QUIT)
             return false;
 
+        if (event.type == SDL_EVENT_DROP_FILE && event.drop.data)
+            impl_->dropped_file = event.drop.data;
+
         if (event.type == SDL_EVENT_KEY_DOWN &&
             event.key.key == SDLK_ESCAPE)
             return false;
     }
 
     return true;
+}
+
+std::string Frontend::ConsumeDroppedFile() {
+    std::string result = std::move(impl_->dropped_file);
+    impl_->dropped_file.clear();
+    return result;
 }
 
 void Frontend::Present(const Status& status) {
