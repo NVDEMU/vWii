@@ -208,7 +208,7 @@ bool Frontend::Initialize(const char* title, int width, int height) {
 
     LoadConfig();
 
-    if (auto_update_)
+    if (impl_->auto_update)
         impl_->updater.Start();
 
     impl_->window = SDL_CreateWindow(
@@ -960,7 +960,7 @@ void Frontend::RenderLibrary(const Status& status) {
                 impl_->renderer,
                 x + 18, y + 18,
                 Shorten(games[index].title, 31),
-                Text);
+                TextColor);
 
             Text(
                 impl_->renderer,
@@ -1149,7 +1149,7 @@ void Frontend::RenderSettings() {
                 impl_->renderer,
                 x + 12, y,
                 Shorten(entries[i].name, 34),
-                Text);
+                TextColor);
             const char* name =
                 entries[i].scancode == SDL_SCANCODE_UNKNOWN
                     ? "UNBOUND"
@@ -1173,7 +1173,7 @@ void Frontend::RenderSettings() {
         break;
     }
 
-    case SettingsSection::Library:
+    case SettingsSection::Library: {
         Text(impl_->renderer, x, 114, "GAME FOLDERS", TextColor);
         FillRect(impl_->renderer, x, 150, 620, 42, AccentSoft);
         Text(impl_->renderer, x + 16, 166,
@@ -1204,6 +1204,7 @@ void Frontend::RenderSettings() {
         Text(impl_->renderer, x + 16, 661,
              "REMOVE SELECTED FOLDER", TextColor);
         break;
+    }
 
     case SettingsSection::Updates: {
         Text(impl_->renderer, x, 114, "UPDATES", TextColor);
@@ -1273,7 +1274,7 @@ void Frontend::RenderAbout() {
     FillRect(impl_->renderer, 252, 92, 932, 190, Panel);
     Text(impl_->renderer, 282, 124,
          "A Wii emulator written from scratch for Windows and macOS.",
-         Text);
+         TextColor);
     Text(impl_->renderer, 282, 152,
          "Current frontend", Muted);
     Text(impl_->renderer, 470, 152,
@@ -1512,7 +1513,7 @@ void Frontend::RenderXfb(const Status& status,
                 status.game_id.empty()
                     ? "WII GAME"
                     : status.game_id,
-                Text);
+                TextColor);
         }
     } catch (const std::out_of_range&) {
         // Invalid XFB mappings fall through to the launcher surface.
