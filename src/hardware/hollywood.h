@@ -11,9 +11,11 @@ public:
     [[nodiscard]] uint32_t Read32(uint32_t address) const;
     void Write32(uint32_t address, uint32_t value);
 
-    // Called by the emulator scheduler to assert a Hollywood source.
     void RaisePpcInterrupt(unsigned source);
     void ClearPpcInterrupt(unsigned source);
+
+    // Starlet/HLE side uses this when an IPC command has completed.
+    void CompleteIpcReply();
 
     [[nodiscard]] bool PpcInterruptPending() const;
     [[nodiscard]] uint32_t PpcIrqFlags() const { return ppc_irq_flags_; }
