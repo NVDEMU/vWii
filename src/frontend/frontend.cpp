@@ -582,7 +582,7 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
         impl_->renderer,
         preview.x + 24.0f,
         preview.y + 48.0f,
-        "F12  Settings       F6  Download nightly       ESC  Quit");
+        "F12  Settings       ESC  Quit");
 
     const uint32_t pc = status.pc;
     const int bar_width = window_width > 120 ? window_width - 120 : 1;
@@ -609,7 +609,7 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
         break;
     case UpdateChecker::State::Available:
         SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
-                            "NIGHTLY UPDATE AVAILABLE - PRESS F6 TO DOWNLOAD");
+                            "NIGHTLY UPDATE AVAILABLE - F12 SETTINGS, THEN F6 TO DOWNLOAD");
         break;
     case UpdateChecker::State::Current:
         SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
