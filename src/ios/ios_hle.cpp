@@ -94,6 +94,10 @@ void IOSHLE::AttachDisc(disc::DiscImage* disc) {
     disc_ = disc;
 }
 
+void IOSHLE::AttachWiimote(input::WiiRemoteKeyboard* wiimote) {
+    wiimote_ = wiimote;
+}
+
 bool IOSHLE::ReadRequest(uint32_t request_address, uint32_t& command,
                           uint32_t& fd,
                           std::array<uint32_t, 5>& args) const {
@@ -400,8 +404,22 @@ uint32_t IOSHLE::HandleUsbIoctlV(uint32_t request,
         const uint32_t output_address = vectors[in_count].address;
         const uint32_t output_size = vectors[in_count].size;
 
-        if ((endpoint & 0x80u) != 0 && output_size != 0)
+        if ((endpoint & 0x80u) != 0 && output_size != 0) {
+            if (fd == FD_USB_OH1 && request == 2 && wiimote_) {
+                const auto report = wiimote_->BuildReport();
+                const std::size_t count =
+                    std::min<std::size_t>(report.size(), output_size);
+                memory_.WriteBlock(
+                    output_address,
+                    std::span<const uint8_t>(report.data(), count));
+                if (count < output_size)
+                    memory_.Fill(output_address + static_cast<uint32_t>(count),
+                                 output_size - count, 0);
+                return static_cast<uint32_t>(count);
+            }
+
             memory_.Fill(output_address, output_size, 0);
+        }
 
         return static_cast<uint32_t>(
             std::min<uint32_t>(requested, output_size));
