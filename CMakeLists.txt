@@ -70,6 +70,7 @@ add_library(vwii_core
     src/input/wiimote_keyboard.cpp
     src/filesystem/wii_fst.cpp
     src/frontend/frontend.cpp
+    src/frontend/keyboard_bindings.cpp
     src/video/video_backend.cpp
 )
 
