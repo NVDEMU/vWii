@@ -7,6 +7,13 @@ namespace vwii::hardware {
 
 class Hollywood;
 
+struct XfbInfo {
+    uint32_t address{};
+    uint32_t width{};
+    uint32_t stride{};
+    uint32_t height{};
+};
+
 class VideoInterface {
 public:
     explicit VideoInterface(Hollywood& hollywood);
@@ -20,6 +27,7 @@ public:
     [[nodiscard]] uint64_t FrameCount() const { return frame_count_; }
     [[nodiscard]] uint32_t XfbAddressTop() const;
     [[nodiscard]] uint32_t XfbAddressBottom() const;
+    [[nodiscard]] XfbInfo CurrentXfb() const;
     void VBlank();
 
 private:
