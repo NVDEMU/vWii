@@ -159,6 +159,7 @@ void DiscImage::Close() {
     game_partition_index_ = static_cast<std::size_t>(-1);
     game_partition_disc_offset_ = 0;
     game_partition_data_size_ = 0;
+    game_partition_first_sector_ = 0;
 }
 
 bool DiscImage::Open(const std::string& path) {
@@ -405,8 +406,6 @@ bool DiscImage::OpenRvz() {
     info_.format = "RVZ";
     info_.wii = true;
     info_.disc_size = ReadBE64(disc, 0x10);
-    info_.game_id.assign(
-        reinterpret_cast<const char*>(disc.data() + 0x10), 6);
 
     if (!LoadRvzTables())
         return false;
@@ -468,11 +467,35 @@ bool DiscImage::OpenRvz() {
     if (game_partition_index_ == static_cast<std::size_t>(-1))
         return false;
 
-    game_partition_data_size_ = 0;
-    for (const auto& region : partitions_[game_partition_index_].regions) {
-        game_partition_data_size_ +=
+    const auto& selected_partition = partitions_[game_partition_index_];
+    game_partition_first_sector_ = selected_partition.regions[0].first_sector;
+
+    uint64_t max_end = 0;
+    for (const auto& region : selected_partition.regions) {
+        if (region.sector_count == 0)
+            continue;
+
+        if (region.first_sector < game_partition_first_sector_)
+            return false;
+
+        const uint64_t logical_start =
+            static_cast<uint64_t>(region.first_sector -
+                                  game_partition_first_sector_) *
+            WiiUserDataSize;
+        const uint64_t logical_end =
+            logical_start +
             static_cast<uint64_t>(region.sector_count) * WiiUserDataSize;
+
+        max_end = std::max(max_end, logical_end);
     }
+
+    game_partition_data_size_ = max_end;
+
+    std::array<uint8_t, 8> game_id{};
+    if (!Read(0, game_id.data(), 8))
+        return false;
+
+    info_.game_id.assign(reinterpret_cast<const char*>(game_id.data()), 6);
 
     return game_partition_data_size_ != 0;
 }
@@ -727,23 +750,26 @@ bool DiscImage::ReadGamePartition(uint64_t offset, void* destination,
         return false;
 
     const auto& partition = partitions_[game_partition_index_];
-    uint64_t region_base = 0;
 
     for (const auto& region : partition.regions) {
+        if (region.sector_count == 0)
+            continue;
+
+        const uint64_t region_base =
+            static_cast<uint64_t>(region.first_sector -
+                                  game_partition_first_sector_) *
+            WiiUserDataSize;
         const uint64_t region_size =
             static_cast<uint64_t>(region.sector_count) * WiiUserDataSize;
 
-        if (offset < region_base + region_size) {
-            const uint64_t in_region = offset - region_base;
+        if (offset < region_base || offset >= region_base + region_size)
+            continue;
 
-            if (size > region_size - in_region)
-                return false;
+        const uint64_t in_region = offset - region_base;
+        if (size > region_size - in_region)
+            return false;
 
-            return ReadPartitionRvz(
-                region, in_region, destination, size);
-        }
-
-        region_base += region_size;
+        return ReadPartitionRvz(region, in_region, destination, size);
     }
 
     return false;
