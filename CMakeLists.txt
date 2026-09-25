@@ -26,7 +26,20 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(zstd)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-3.2.0
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(zstd SDL3)
 
 if(MSVC)
     add_compile_options(/W4)
@@ -52,6 +65,7 @@ add_library(vwii_core
     src/ios/ios_hle.cpp
     src/ios/nand_fs.cpp
     src/filesystem/wii_fst.cpp
+    src/frontend/frontend.cpp
     src/video/video_backend.cpp
 )
 
@@ -81,7 +95,7 @@ add_executable(vwii
     src/main.cpp
 )
 
-target_link_libraries(vwii PRIVATE vwii_core)
+target_link_libraries(vwii PRIVATE vwii_core SDL3::SDL3)
 
 include(CTest)
 if(BUILD_TESTING)
