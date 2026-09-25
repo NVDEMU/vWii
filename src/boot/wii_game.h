@@ -17,4 +17,7 @@ struct WiiBootResult {
 WiiBootResult LoadWiiGame(const std::string& path,
                           memory::Memory& memory);
 
+WiiBootResult LoadWiiGame(disc::DiscImage& image,
+                          memory::Memory& memory);
+
 } // namespace vwii::boot
