@@ -214,10 +214,12 @@ void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
     case SDL_SCANCODE_G:
         send(input::Key::GuitarStrumUp);
         send(input::Key::TurntableRed);
+        send(input::Key::ShinkansenBrake);
         break;
     case SDL_SCANCODE_H:
         send(input::Key::GuitarStrumDown);
         send(input::Key::TurntableBlue);
+        send(input::Key::ShinkansenHorn);
         break;
     case SDL_SCANCODE_T:
         send(input::Key::GuitarWhammyDown);
@@ -230,6 +232,7 @@ void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
     case SDL_SCANCODE_F:
         send(input::Key::TurntableGreen);
         send(input::Key::AccelYPositive);
+        send(input::Key::ShinkansenThrottleDown);
         break;
     case SDL_SCANCODE_R:
         send(input::Key::AccelYPositive);
@@ -241,6 +244,48 @@ void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
         break;
     case SDL_SCANCODE_B:
         send(input::Key::TaTaConRim);
+        break;
+    default:
+        break;
+    }
+
+    switch (scancode) {
+    case SDL_SCANCODE_SEMICOLON:
+        send(input::Key::UDrawUp);
+        send(input::Key::DrawsomeUp);
+        break;
+    case SDL_SCANCODE_SLASH:
+        send(input::Key::UDrawDown);
+        send(input::Key::DrawsomeDown);
+        break;
+    case SDL_SCANCODE_APOSTROPHE:
+        send(input::Key::UDrawPen);
+        send(input::Key::DrawsomePen);
+        break;
+    case SDL_SCANCODE_RIGHTBRACKET:
+        send(input::Key::UDrawA);
+        send(input::Key::DrawsomeA);
+        break;
+    case SDL_SCANCODE_LEFTBRACKET:
+        send(input::Key::UDrawB);
+        send(input::Key::DrawsomeB);
+        send(input::Key::ClassicY);
+        break;
+    case SDL_SCANCODE_COMMA:
+        send(input::Key::UDrawLeft);
+        send(input::Key::DrawsomeLeft);
+        send(input::Key::TurntableCrossfadeLeft);
+        send(input::Key::ClassicZL);
+        break;
+    case SDL_SCANCODE_PERIOD:
+        send(input::Key::UDrawRight);
+        send(input::Key::DrawsomeRight);
+        send(input::Key::TurntableCrossfadeRight);
+        send(input::Key::ClassicZR);
+        break;
+    case SDL_SCANCODE_6:
+        send(input::Key::ClassicHome);
+        send(input::Key::DrumRed);
         break;
     default:
         break;
@@ -320,6 +365,10 @@ bool IsMappedKey(SDL_Scancode scancode) {
     case SDL_SCANCODE_T:
     case SDL_SCANCODE_V:
     case SDL_SCANCODE_Y:
+    case SDL_SCANCODE_APOSTROPHE:
+    case SDL_SCANCODE_SEMICOLON:
+    case SDL_SCANCODE_SLASH:
+    case SDL_SCANCODE_RIGHTBRACKET:
     case SDL_SCANCODE_F2:
     case SDL_SCANCODE_F3:
     case SDL_SCANCODE_F4:
