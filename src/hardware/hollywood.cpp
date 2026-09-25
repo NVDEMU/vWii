@@ -24,7 +24,14 @@ constexpr uint32_t BOOT0       = Base + 0x18C;
 constexpr uint32_t CLOCKS      = Base + 0x190;
 constexpr uint32_t RESETS      = Base + 0x194;
 
-constexpr uint32_t IRQ_SOURCE_IPC = 30;
+constexpr uint32_t IPC_REPLY_IRQ = 30;
+
+constexpr uint32_t X1  = 1u << 0;
+constexpr uint32_t Y2  = 1u << 1;
+constexpr uint32_t Y1  = 1u << 2;
+constexpr uint32_t X2  = 1u << 3;
+constexpr uint32_t IY1 = 1u << 4;
+constexpr uint32_t IY2 = 1u << 5;
 
 } // namespace
 
@@ -61,8 +68,7 @@ uint32_t Hollywood::Read32(uint32_t address) const {
     case BOOT0:       return boot0_;
     case CLOCKS:      return clocks_;
     case RESETS:      return resets_;
-    default:
-        return 0;
+    default:          return 0;
     }
 }
 
@@ -72,23 +78,18 @@ void Hollywood::Write32(uint32_t address, uint32_t value) {
         ipc_ppc_msg_ = value;
         break;
 
-    case IPC_PPCCTRL: {
-        // X1/X2 are writable; Y1/Y2 are clear-on-write-one.
-        const uint32_t writable = (1u << 0) | (1u << 2);
-        const uint32_t clearable = (1u << 1) | (1u << 3);
-
+    case IPC_PPCCTRL:
+        // X1/X2 and interrupt-enable bits are writable.
         ipc_ppc_ctrl_ =
-            (ipc_ppc_ctrl_ & ~(writable | (1u << 4) | (1u << 5))) |
-            (value & (writable | (1u << 4) | (1u << 5)));
+            (ipc_ppc_ctrl_ & ~(X1 | X2 | IY1 | IY2)) |
+            (value & (X1 | X2 | IY1 | IY2));
 
-        if (value & (1u << 1))
-            ipc_ppc_ctrl_ &= ~(1u << 1);
-        if (value & (1u << 3))
-            ipc_ppc_ctrl_ &= ~(1u << 3);
-
-        (void)clearable;
+        // Y1/Y2 are read-only and clear-on-write-one.
+        if (value & Y1)
+            ipc_ppc_ctrl_ &= ~Y1;
+        if (value & Y2)
+            ipc_ppc_ctrl_ &= ~Y2;
         break;
-    }
 
     case IPC_ARMMSG:
         ipc_arm_msg_ = value;
@@ -142,11 +143,19 @@ void Hollywood::Write32(uint32_t address, uint32_t value) {
         break;
     }
 
-    // Setting X1/X2 on the PPC side is the mechanism used to notify IOS.
-    // The HLE Starlet will consume this later through the IOS service layer.
-    if (address == IPC_PPCCTRL && ((value >> 0) & 1u)) {
-        arm_irq_flags_ |= (1u << IRQ_SOURCE_IPC);
-    }
+    // X1 is the "execute command" bell from Broadway to Starlet.
+    if (address == IPC_PPCCTRL && (value & X1))
+        arm_irq_flags_ |= 1u << 31;
+}
+
+void Hollywood::CompleteIpcReply() {
+    // X1 is no longer pending; Starlet raises Y2 (acknowledged) and Y1
+    // (reply available). If IY1 is enabled, route Hollywood IRQ 30 to PPC.
+    ipc_ppc_ctrl_ &= ~X1;
+    ipc_ppc_ctrl_ |= Y2 | Y1;
+
+    if (ipc_ppc_ctrl_ & IY1)
+        RaisePpcInterrupt(IPC_REPLY_IRQ);
 }
 
 void Hollywood::RaisePpcInterrupt(unsigned source) {
