@@ -746,7 +746,11 @@ void Frontend::HandleSettingsClick(float x, float y) {
             impl_->auto_update = true;
             impl_->updater.Refresh();
         } else if (Contains(x, y, SDL_FRect{442, 202, 620, 42})) {
-            impl_->updater.OpenLatest();
+            const std::string downloaded = impl_->updater.DownloadLatest();
+            if (!downloaded.empty())
+                impl_->status_message = "Nightly downloaded: " + downloaded;
+            else
+                impl_->status_message = "Nightly download failed. Check that curl is available and GitHub can be reached.";
         }
         break;
     }
@@ -956,7 +960,10 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
 
                 if (scancode == SDL_SCANCODE_F6 &&
                     impl_->settings_section == SettingsSection::Updates) {
-                    impl_->updater.OpenLatest();
+                    const std::string downloaded = impl_->updater.DownloadLatest();
+                    impl_->status_message = downloaded.empty()
+                        ? "Nightly download failed. Check that curl is available and GitHub can be reached."
+                        : "Nightly downloaded: " + downloaded;
                     continue;
                 }
 
