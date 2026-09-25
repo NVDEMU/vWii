@@ -18,7 +18,7 @@ void Scheduler::Advance(Cycle cycles) {
     const Cycle target = now_ + cycles;
 
     while (!events_.empty() && events_.top().when <= target) {
-        Event event = std::move(const_cast<Event&>(events_.top()));
+        Event event = events_.top();
         events_.pop();
 
         now_ = event.when;
