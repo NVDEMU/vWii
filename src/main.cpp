@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
             uint64_t instructions = 0;
             while (frontend.PumpEvents(&emulator.Wiimote(), 0.016f)) {
                 constexpr uint64_t InstructionsPerFrame = 5000;
-                if (!emulator.CPU().Halted()) {
+                if (!frontend.SettingsOpen() && !emulator.CPU().Halted()) {
                     emulator.RunForInstructions(InstructionsPerFrame);
                     instructions += InstructionsPerFrame;
                 }
@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
     vwii::frontend::Status status;
     uint64_t instructions = 0;
 
-    while (frontend.PumpEvents()) {
+    while (frontend.PumpEvents(&emulator.Wiimote(), 0.016f)) {
         const std::string dropped = frontend.ConsumeDroppedFile();
 
         if (!dropped.empty()) {
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (status.loaded && !emulator.CPU().Halted()) {
+        if (!frontend.SettingsOpen() && status.loaded && !emulator.CPU().Halted()) {
             constexpr uint64_t InstructionsPerFrame = 5000;
             emulator.RunForInstructions(InstructionsPerFrame);
             instructions += InstructionsPerFrame;
