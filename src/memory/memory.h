@@ -41,6 +41,8 @@ public:
 private:
     [[nodiscard]] bool IsHollywoodRegister(uint32_t address) const;
     [[nodiscard]] uint32_t HollywoodRegisterAddress(uint32_t address) const;
+    [[nodiscard]] bool IsPeripheralRegister(uint32_t address) const;
+    [[nodiscard]] std::size_t PeripheralOffset(uint32_t address) const;
 
     [[nodiscard]] std::pair<const uint8_t*, std::size_t> Translate(uint32_t address) const;
     [[nodiscard]] std::pair<uint8_t*, std::size_t> TranslateMutable(uint32_t address);
@@ -48,6 +50,7 @@ private:
 
     std::vector<uint8_t> mem1_;
     std::vector<uint8_t> mem2_;
+    std::vector<uint8_t> peripheral_regs_;
     hardware::Hollywood hollywood_{};
 };
 
