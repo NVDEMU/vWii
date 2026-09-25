@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
         const std::string_view command = argv[1];
 
         if (command == "--version") {
-            std::cout << "vWii 0.2.0\n";
+            std::cout << "vWii 0.3.0\n";
             return 0;
         }
 
