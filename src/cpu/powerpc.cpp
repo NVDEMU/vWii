@@ -936,9 +936,9 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         case 18: result = a / b; break; // FDIVS
         case 20: result = a - b; break; // FSUBS
         case 21: result = a + b; break; // FADDS
-        case 24: result = a * b - c; break; // FSUBS fused
+        case 24: result = 1.0f / b; break; // FRES
         case 25: result = a * b; break; // FMULS
-        case 28: result = a * b + c; break; // FMSUBS alias encoding coverage
+        case 28: result = a * b - c; break; // FMSUBS
         case 29: result = a * b + c; break; // FMADDS
         case 30: result = -(a * b - c); break; // FNMSUBS
         case 31: result = -(a * b + c); break; // FNMADDS
@@ -970,7 +970,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         case 21: // FADD
             fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) + FPRDouble(fpr_[fb]));
             break;
-        case 24: // FMSUB
+        case 28: // FMSUB
             fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]) - c);
             break;
         case 25: // FMUL
