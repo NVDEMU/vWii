@@ -35,14 +35,32 @@ uint32_t VideoInterface::Read32(uint32_t address) const {
     if (address < Base || address >= Base + Size || (address & 3u) != 0)
         return 0;
 
-    return registers_[(address - Base) / 4];
+    const std::size_t index = (address - Base) / 2;
+    return (static_cast<uint32_t>(registers_[index]) << 16) |
+           registers_[index + 1];
 }
 
 void VideoInterface::Write32(uint32_t address, uint32_t value) {
     if (address < Base || address >= Base + Size || (address & 3u) != 0)
         return;
 
-    registers_[(address - Base) / 4] = value;
+    const std::size_t index = (address - Base) / 2;
+    registers_[index] = static_cast<uint16_t>(value >> 16);
+    registers_[index + 1] = static_cast<uint16_t>(value);
+}
+
+uint32_t VideoInterface::XfbAddressTop() const {
+    const uint32_t packed = Read32(Base + 0x1C);
+    const uint32_t fbb = packed >> 8;
+    const bool poff = (packed & (1u << 4)) != 0;
+    return poff ? (fbb << 5) : fbb;
+}
+
+uint32_t VideoInterface::XfbAddressBottom() const {
+    const uint32_t packed = Read32(Base + 0x24);
+    const uint32_t fbb = packed >> 8;
+    const bool poff = (packed & (1u << 4)) != 0;
+    return poff ? (fbb << 5) : fbb;
 }
 
 } // namespace vwii::hardware
