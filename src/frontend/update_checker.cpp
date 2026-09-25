@@ -62,24 +62,50 @@ std::string ExtractJsonString(const std::string& json, const std::string& key) {
 }
 
 std::string ExtractAssetUrl(const std::string& json,
-                            const std::string& asset_name) {
-    const std::string name_marker =
-        "\"name\":\"" + asset_name + "\"";
-    const std::size_t name_pos = json.find(name_marker);
-    if (name_pos == std::string::npos)
-        return {};
+                            const std::string& suffix) {
+    std::size_t search = 0;
 
-    const std::string url_marker = "\"browser_download_url\":\"";
-    const std::size_t url_pos = json.find(url_marker, name_pos);
-    if (url_pos == std::string::npos)
-        return {};
+    while (search < json.size()) {
+        const std::size_t name_pos =
+            json.find("\"name\":\"", search);
+        if (name_pos == std::string::npos)
+            return {};
 
-    const std::size_t value_start = url_pos + url_marker.size();
-    const std::size_t value_end = json.find('"', value_start);
-    if (value_end == std::string::npos)
-        return {};
+        const std::size_t name_start = name_pos + 8;
+        const std::size_t name_end = json.find('"', name_start);
+        if (name_end == std::string::npos)
+            return {};
 
-    return json.substr(value_start, value_end - value_start);
+        const std::string name =
+            json.substr(name_start, name_end - name_start);
+
+        const std::size_t object_end = json.find('}', name_end);
+        if (object_end == std::string::npos)
+            return {};
+
+        if (name.size() >= suffix.size() &&
+            name.compare(name.size() - suffix.size(),
+                         suffix.size(), suffix) == 0) {
+            const std::string url_marker =
+                "\"browser_download_url\":\"";
+            const std::size_t url_pos =
+                json.find(url_marker, name_end);
+            if (url_pos != std::string::npos &&
+                url_pos < object_end) {
+                const std::size_t value_start =
+                    url_pos + url_marker.size();
+                const std::size_t value_end =
+                    json.find('"', value_start);
+                if (value_end != std::string::npos)
+                    return json.substr(
+                        value_start, value_end - value_start);
+            }
+        }
+
+        search = object_end + 1;
+    }
+
+    return {};
 }
 
 std::filesystem::path MakeTempPath() {
@@ -111,6 +137,18 @@ void UpdateChecker::Start() {
     worker_ = std::thread([this]() {
         Check();
     });
+}
+
+void UpdateChecker::Refresh() {
+    if (worker_.joinable())
+        worker_.join();
+
+    {
+        std::scoped_lock lock(mutex_);
+        started_ = false;
+    }
+
+    Start();
 }
 
 UpdateChecker::Result UpdateChecker::GetResult() const {
@@ -179,10 +217,10 @@ UpdateChecker::Result UpdateChecker::CheckNow() {
 
 #if defined(_WIN32)
     result.asset_url =
-        ExtractAssetUrl(json, "vWii-Windows-x64.zip");
+        ExtractAssetUrl(json, "-Windows-x64.zip");
 #elif defined(__APPLE__)
     result.asset_url =
-        ExtractAssetUrl(json, "vWii-macOS.dmg");
+        ExtractAssetUrl(json, "-macOS.dmg");
 #endif
 
     if (result.release_url.empty()) {
