@@ -313,6 +313,45 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             const bool taken = ConditionBit(BO(instruction), BI(instruction));
             if (taken)
                 pc_ = ctr_ & ~3u;
+            if (instruction & 1)
+                lr_ = pc_;
+            break;
+        }
+
+        if (xo == 0) { // MCRF
+            const unsigned bt = (instruction >> 23) & 7;
+            const unsigned ba = (instruction >> 18) & 7;
+            const unsigned source_shift = 28 - ba * 4;
+            const unsigned value =
+                (cr_ >> source_shift) & 0xF;
+            SetCRField(bt, value);
+            break;
+        }
+
+        const unsigned bt = (instruction >> 21) & 31;
+        const unsigned ba = (instruction >> 16) & 31;
+        const unsigned bb = (instruction >> 11) & 31;
+
+        if (xo == 33 || xo == 129 || xo == 193 || xo == 225 ||
+            xo == 257 || xo == 289 || xo == 417 || xo == 449) {
+            const unsigned a = GetCRBit(ba);
+            const unsigned b = GetCRBit(bb);
+            unsigned result = 0;
+
+            switch (xo) {
+            case 33:  result = !(a | b); break;      // CRNOR
+            case 129: result = a & !b; break;       // CRANDC
+            case 193: result = a ^ b; break;        // CRXOR
+            case 225: result = !(a & b); break;     // CRNAND
+            case 257: result = a & b; break;        // CRAND
+            case 289: result = !(a ^ b); break;     // CREQV
+            case 417: result = a | !b; break;       // CRORC
+            case 449: result = a | b; break;        // CROR
+            default: break;
+            }
+
+            const unsigned shift = 31 - bt;
+            cr_ = (cr_ & ~(1u << shift)) | (result << shift);
             break;
         }
 
@@ -531,6 +570,30 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             gpr_[RD(instruction)] = result;
             if (Rc(instruction))
                 SetCR0FromResult(result);
+            break;
+        }
+
+        case 459: { // DIVWU
+            const uint32_t divisor = gpr_[rb];
+            const uint32_t result =
+                divisor == 0 ? 0u : gpr_[ra] / divisor;
+            gpr_[RD(instruction)] = result;
+            if (Rc(instruction))
+                SetCR0FromResult(result);
+            break;
+        }
+
+        case 491: { // DIVW
+            const int32_t divisor = static_cast<int32_t>(gpr_[rb]);
+            const int32_t dividend = static_cast<int32_t>(gpr_[ra]);
+            const int32_t result =
+                divisor == 0 ? 0 :
+                (dividend == INT32_MIN && divisor == -1)
+                    ? INT32_MIN
+                    : dividend / divisor;
+            gpr_[RD(instruction)] = static_cast<uint32_t>(result);
+            if (Rc(instruction))
+                SetCR0FromResult(static_cast<uint32_t>(result));
             break;
         }
 
