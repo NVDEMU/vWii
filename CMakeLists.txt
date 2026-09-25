@@ -107,7 +107,7 @@ if(BUILD_TESTING)
     add_executable(vwii_core_tests
         tests/core_tests.cpp
     )
-    target_link_libraries(vwii_core_tests PRIVATE vwii_core)
+    target_link_libraries(vwii_core_tests PRIVATE vwii_core SDL3::SDL3)
     add_test(NAME vwii_core_tests COMMAND vwii_core_tests)
 endif()
 
