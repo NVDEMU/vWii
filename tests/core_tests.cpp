@@ -1,5 +1,6 @@
 #include "core/emulator.h"
 #include "input/wiimote_keyboard.h"
+#include "frontend/keyboard_bindings.h"
 
 #include <cassert>
 #include <cstdint>
@@ -106,6 +107,15 @@ int main() {
     wiimote.KeyEvent(vwii::input::Key::A, false);
     wiimote.KeyEvent(vwii::input::Key::NunchukZ, false);
     wiimote.KeyEvent(vwii::input::Key::MotionYawRight, false);
+
+    // Persistent keyboard remapping table.
+    vwii::frontend::KeyboardBindings bindings;
+    assert(!bindings.Entries().empty());
+    const auto original_a = bindings.Entries()[4].scancode;
+    bindings.Set(4, SDL_SCANCODE_F12);
+    assert(bindings.Entries()[4].scancode == SDL_SCANCODE_F12);
+    bindings.Reset(4);
+    assert(bindings.Entries()[4].scancode == original_a);
 
     // Persistent host-backed NAND file I/O.
     const std::filesystem::path test_nand =
