@@ -54,6 +54,7 @@ jobs:
           set -euo pipefail
 
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."               --prerelease
             gh release upload "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --clobber               release-assets/*
           else
             gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --prerelease               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."               release-assets/*
