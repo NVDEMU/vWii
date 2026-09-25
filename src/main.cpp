@@ -108,10 +108,31 @@ int main(int argc, char** argv) {
 
             uint64_t instructions = 0;
             while (frontend.PumpEvents(&emulator.Wiimote(), 0.016f)) {
-                constexpr uint64_t InstructionsPerFrame = 250000;
-                if (!frontend.SettingsOpen() && !emulator.CPU().Halted()) {
-                    emulator.RunForInstructions(InstructionsPerFrame);
-                    instructions += InstructionsPerFrame;
+                const std::string launch_file =
+                    frontend.ConsumeLaunchFile();
+
+                if (!launch_file.empty()) {
+                    const auto game_result =
+                        emulator.LoadWiiGame(launch_file);
+                    if (game_result.success) {
+                        status.game_id = game_result.disc.game_id;
+                        status.loaded = true;
+                        status.halted = false;
+                        instructions = 0;
+                        std::cout << "Loaded " << launch_file
+                                  << " (" << status.game_id << ")\n";
+                    } else {
+                        std::cerr << "Wii boot preparation failed: "
+                                  << game_result.error << "\n";
+                    }
+                }
+
+                if (!frontend.SettingsOpen() && status.loaded &&
+                    !emulator.CPU().Halted()) {
+                    const uint64_t budget =
+                        frontend.InstructionBudget();
+                    emulator.RunForInstructions(budget);
+                    instructions += budget;
                 }
 
                 status.pc = emulator.CPU().GetPC();
@@ -175,24 +196,31 @@ int main(int argc, char** argv) {
 
     while (frontend.PumpEvents(&emulator.Wiimote(), 0.016f)) {
         const std::string dropped = frontend.ConsumeDroppedFile();
+        const std::string launch_file = frontend.ConsumeLaunchFile();
+        const std::string requested =
+            !launch_file.empty() ? launch_file : dropped;
 
-        if (!dropped.empty()) {
-            const auto result = emulator.LoadWiiGame(dropped);
+        if (!requested.empty()) {
+            const auto result = emulator.LoadWiiGame(requested);
             if (result.success) {
                 status.game_id = result.disc.game_id;
                 status.loaded = true;
                 status.halted = false;
-                std::cout << "Loaded " << dropped << " (" << status.game_id << ")\n";
+                instructions = 0;
+                std::cout << "Loaded " << requested
+                          << " (" << status.game_id << ")\n";
             } else {
                 std::cerr << "Wii boot preparation failed: "
                           << result.error << "\n";
+                status.loaded = false;
             }
         }
 
-        if (!frontend.SettingsOpen() && status.loaded && !emulator.CPU().Halted()) {
-            constexpr uint64_t InstructionsPerFrame = 250000;
-            emulator.RunForInstructions(InstructionsPerFrame);
-            instructions += InstructionsPerFrame;
+        if (!frontend.SettingsOpen() && status.loaded &&
+            !emulator.CPU().Halted()) {
+            const uint64_t budget = frontend.InstructionBudget();
+            emulator.RunForInstructions(budget);
+            instructions += budget;
         }
 
         status.pc = emulator.CPU().GetPC();
