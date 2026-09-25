@@ -60,6 +60,9 @@ add_library(vwii_core
     src/boot/wii_game.cpp
     src/disc/disc_image.cpp
     src/hardware/hollywood.cpp
+    src/hardware/video_interface.cpp
+    src/hardware/gx_fifo.cpp
+    src/hardware/audio_interface.cpp
     src/system/scheduler.cpp
     src/ios/ios_hle.cpp
     src/ios/nand_fs.cpp
