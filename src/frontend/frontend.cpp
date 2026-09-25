@@ -37,7 +37,7 @@ constexpr Color Sidebar{16, 22, 34, 255};
 constexpr Color Panel{23, 31, 46, 255};
 constexpr Color PanelAlt{29, 39, 57, 255};
 constexpr Color Border{51, 67, 91, 255};
-constexpr Color Text{236, 241, 248, 255};
+constexpr Color TextColor{236, 241, 248, 255};
 constexpr Color Muted{151, 164, 184, 255};
 constexpr Color Accent{63, 177, 255, 255};
 constexpr Color AccentSoft{34, 92, 135, 255};
@@ -66,7 +66,7 @@ void StrokeRect(SDL_Renderer* renderer, float x, float y,
 }
 
 void Text(SDL_Renderer* renderer, float x, float y,
-          const std::string& value, Color color = Text) {
+          const std::string& value, Color color = TextColor) {
     SetColor(renderer, color);
     SDL_RenderDebugText(renderer, x, y, value.c_str());
 }
@@ -795,7 +795,7 @@ uint64_t Frontend::InstructionBudget() const {
 void Frontend::RenderSidebar() {
     FillRect(impl_->renderer, 0, 0, 220, LogicalHeight, Sidebar);
 
-    Text(impl_->renderer, 28, 28, "vWii", Text);
+    Text(impl_->renderer, 28, 28, "vWii", TextColor);
     Text(impl_->renderer, 28, 48,
          "WII EMULATOR", Muted);
 
@@ -826,7 +826,7 @@ void Frontend::RenderSidebar() {
             32,
             item.y + 22,
             item.label,
-            active ? Text : Muted);
+            active ? TextColor : Muted);
     }
 
     Text(impl_->renderer, 28, 610,
@@ -845,7 +845,7 @@ void Frontend::RenderLibrary(const Status& status) {
     FillRect(impl_->renderer, 220, 0,
              LogicalWidth - 220, LogicalHeight, Background);
 
-    Text(impl_->renderer, 252, 34, "GAME LIBRARY", Text);
+    Text(impl_->renderer, 252, 34, "GAME LIBRARY", TextColor);
     Text(
         impl_->renderer,
         252, 54,
@@ -859,9 +859,9 @@ void Frontend::RenderLibrary(const Status& status) {
     FillRect(impl_->renderer, 968, 24, 120, 34, AccentSoft);
     FillRect(impl_->renderer, 1096, 24, 116, 34, Success);
 
-    Text(impl_->renderer, 877, 37, "REFRESH", Text);
-    Text(impl_->renderer, 985, 37, "ADD FOLDER", Text);
-    Text(impl_->renderer, 1114, 37, "OPEN GAME", Text);
+    Text(impl_->renderer, 877, 37, "REFRESH", TextColor);
+    Text(impl_->renderer, 985, 37, "ADD FOLDER", TextColor);
+    Text(impl_->renderer, 1114, 37, "OPEN GAME", TextColor);
 
     const auto& games = impl_->library.Games();
 
@@ -869,7 +869,7 @@ void Frontend::RenderLibrary(const Status& status) {
         FillRect(impl_->renderer, 252, 140, 932, 340, Panel);
 
         Text(impl_->renderer, 292, 198,
-             "YOUR LIBRARY IS EMPTY", Text);
+             "YOUR LIBRARY IS EMPTY", TextColor);
         Text(impl_->renderer, 292, 224,
              "Add a folder containing Wii games, or open a game directly.",
              Muted);
@@ -878,9 +878,9 @@ void Frontend::RenderLibrary(const Status& status) {
         FillRect(impl_->renderer, 530, 270, 220, 54, PanelAlt);
 
         Text(impl_->renderer, 314, 292,
-             "ADD GAME FOLDER", Text);
+             "ADD GAME FOLDER", TextColor);
         Text(impl_->renderer, 554, 292,
-             "OPEN WII GAME", Text);
+             "OPEN WII GAME", TextColor);
 
         Text(impl_->renderer, 292, 370,
              "Supported files: RVZ, ISO, WIA, WBFS, DOL, ELF", Muted);
@@ -948,7 +948,7 @@ void Frontend::RenderLibrary(const Status& status) {
              932, 88, Panel);
 
     Text(impl_->renderer, 272, recent_y + 18,
-         "RECENT GAMES", Text);
+         "RECENT GAMES", TextColor);
 
     if (impl_->library.Recent().empty()) {
         Text(impl_->renderer, 272, recent_y + 44,
@@ -986,7 +986,7 @@ void Frontend::RenderSettings() {
     FillRect(impl_->renderer, 220, 0,
              LogicalWidth - 220, LogicalHeight, Background);
 
-    Text(impl_->renderer, 252, 34, "SETTINGS", Text);
+    Text(impl_->renderer, 252, 34, "SETTINGS", TextColor);
     Text(impl_->renderer, 252, 54,
          "Everyday controls, graphics, emulation, paths and updates.",
          Muted);
@@ -1014,7 +1014,7 @@ void Frontend::RenderSettings() {
             impl_->renderer,
             258, y + 15,
             section_names[i],
-            selected ? Text : Muted);
+            selected ? TextColor : Muted);
     }
 
     const float x = 442;
@@ -1022,16 +1022,16 @@ void Frontend::RenderSettings() {
     auto option = [&](float y,
                       const std::string& name,
                       const std::string& value,
-                      Color value_color = Text) {
+                      Color value_color = TextColor) {
         FillRect(impl_->renderer, x, y, 620, 42, Panel);
         StrokeRect(impl_->renderer, x, y, 620, 42, Border);
-        Text(impl_->renderer, x + 16, y + 16, name, Text);
+        Text(impl_->renderer, x + 16, y + 16, name, TextColor);
         Text(impl_->renderer, x + 420, y + 16, value, value_color);
     };
 
     switch (impl_->settings_section) {
     case SettingsSection::General:
-        Text(impl_->renderer, x, 114, "GENERAL", Text);
+        Text(impl_->renderer, x, 114, "GENERAL", TextColor);
         option(150, "Fullscreen", impl_->fullscreen ? "ON" : "OFF",
                impl_->fullscreen ? Success : Muted);
         option(202, "VSync", impl_->vsync ? "ON" : "OFF",
@@ -1047,7 +1047,7 @@ void Frontend::RenderSettings() {
         break;
 
     case SettingsSection::Graphics:
-        Text(impl_->renderer, x, 114, "GRAPHICS", Text);
+        Text(impl_->renderer, x, 114, "GRAPHICS", TextColor);
         {
             const char* aspects[] = {"AUTO", "4:3", "16:9", "STRETCH"};
             option(150, "Aspect ratio",
@@ -1064,7 +1064,7 @@ void Frontend::RenderSettings() {
         break;
 
     case SettingsSection::Emulation:
-        Text(impl_->renderer, x, 114, "EMULATION", Text);
+        Text(impl_->renderer, x, 114, "EMULATION", TextColor);
         option(150, "Emulation speed",
                std::to_string(impl_->emulation_speed_percent) + "%",
                Accent);
@@ -1083,7 +1083,7 @@ void Frontend::RenderSettings() {
 
     case SettingsSection::Input: {
         Text(impl_->renderer, x, 114,
-             "INPUT / KEYBOARD MAPPING", Text);
+             "INPUT / KEYBOARD MAPPING", TextColor);
 
         Text(
             impl_->renderer, x, 134,
@@ -1134,14 +1134,14 @@ void Frontend::RenderSettings() {
     }
 
     case SettingsSection::Library:
-        Text(impl_->renderer, x, 114, "GAME FOLDERS", Text);
+        Text(impl_->renderer, x, 114, "GAME FOLDERS", TextColor);
         FillRect(impl_->renderer, x, 150, 620, 42, AccentSoft);
         Text(impl_->renderer, x + 16, 166,
-             "ADD FOLDER...", Text);
+             "ADD FOLDER...", TextColor);
 
         FillRect(impl_->renderer, x, 202, 620, 42, Panel);
         Text(impl_->renderer, x + 16, 218,
-             "RESCAN LIBRARY", Text);
+             "RESCAN LIBRARY", TextColor);
 
         const auto& folders = impl_->library.Folders();
         for (std::size_t i = 0; i < folders.size(); ++i) {
@@ -1157,16 +1157,16 @@ void Frontend::RenderSettings() {
                 impl_->renderer,
                 x + 12, y + 10,
                 Shorten(folders[i].string(), 72),
-                selected ? Text : Muted);
+                selected ? TextColor : Muted);
         }
 
         FillRect(impl_->renderer, x, 650, 620, 36, Danger);
         Text(impl_->renderer, x + 16, 661,
-             "REMOVE SELECTED FOLDER", Text);
+             "REMOVE SELECTED FOLDER", TextColor);
         break;
 
     case SettingsSection::Updates: {
-        Text(impl_->renderer, x, 114, "UPDATES", Text);
+        Text(impl_->renderer, x, 114, "UPDATES", TextColor);
 
         const auto update = impl_->updater.GetResult();
 
@@ -1197,8 +1197,8 @@ void Frontend::RenderSettings() {
         option(150, "Nightly status", state, state_color);
         FillRect(impl_->renderer, x, 202, 300, 42, PanelAlt);
         FillRect(impl_->renderer, x + 320, 202, 300, 42, AccentSoft);
-        Text(impl_->renderer, x + 18, 218, "CHECK NOW", Text);
-        Text(impl_->renderer, x + 338, 218, "DOWNLOAD NIGHTLY", Text);
+        Text(impl_->renderer, x + 18, 218, "CHECK NOW", TextColor);
+        Text(impl_->renderer, x + 338, 218, "DOWNLOAD NIGHTLY", TextColor);
 
         Text(impl_->renderer, x, 272,
              update.message.empty()
@@ -1228,7 +1228,7 @@ void Frontend::RenderAbout() {
     FillRect(impl_->renderer, 220, 0,
              LogicalWidth - 220, LogicalHeight, Background);
 
-    Text(impl_->renderer, 252, 34, "ABOUT VWII", Text);
+    Text(impl_->renderer, 252, 34, "ABOUT VWII", TextColor);
 
     FillRect(impl_->renderer, 252, 92, 932, 190, Panel);
     Text(impl_->renderer, 282, 124,
@@ -1248,7 +1248,7 @@ void Frontend::RenderAbout() {
          "Persistent folder scanning + recent games", Accent);
 
     Text(impl_->renderer, 252, 324,
-         "COMPATIBILITY", Text);
+         "COMPATIBILITY", TextColor);
     FillRect(impl_->renderer, 252, 352, 932, 86, Panel);
     Text(
         impl_->renderer,
@@ -1262,7 +1262,7 @@ void Frontend::RenderAbout() {
         Muted);
 
     Text(impl_->renderer, 252, 478,
-         "QUALITY OF LIFE", Text);
+         "QUALITY OF LIFE", TextColor);
     Text(
         impl_->renderer,
         252, 506,
