@@ -23,6 +23,7 @@ Current milestones include:
 - macOS .app packaged inside a DMG
 - SDL3 cross-platform GUI with RVZ drag-and-drop
 - persistent host-backed NAND filesystem
+- automatic nightly-release update checking from the GUI
 
 ## Booting a Wii game
 
@@ -146,3 +147,8 @@ Motion simulation: I/K = pitch up/down, J/L = yaw left/right, U/O = roll left/ri
 Extension selection: F1 = no extension, F2 = Nunchuk, F3 = Classic, F4 = Guitar, F5 = Drums, F6 = Turntable, F7 = UDraw, F8 = Drawsome, F9 = TaTaCon, F11 = Shinkansen. F10 toggles MotionPlus.
 
 The virtual HID layer currently covers the common Dolphin attachment set—Nunchuk, Classic, Guitar, Drums, Turntable, UDraw, Drawsome, TaTaCon, Shinkansen—and exposes MotionPlus gyro data. Dolphin's public Wii Remote implementation lists those same attachment types and treats MotionPlus as an attachable sensor. citeturn209127search0
+
+
+### Nightly updater
+
+vWii checks the GitHub **nightly** release automatically when the GUI starts. If a newer build is found, the Settings screen shows an update notice. Press F12 to open Settings, then F6 to open the platform-specific nightly download. The check uses the commit SHA embedded at build time, so an unchanged nightly is not reported repeatedly as a new version.
