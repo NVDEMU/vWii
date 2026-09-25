@@ -43,6 +43,8 @@ private:
     static constexpr uint32_t ErrorInvalidArgument = static_cast<uint32_t>(-4);
     static constexpr uint32_t ErrorNoSuchFile = static_cast<uint32_t>(-106);
 
+    static constexpr uint32_t FD_USB_OH1 = 5;
+
     bool ReadRequest(uint32_t request_address, uint32_t& command,
                      uint32_t& fd, std::array<uint32_t, 5>& args) const;
 
@@ -53,6 +55,8 @@ private:
     uint32_t Seek(uint32_t fd, const std::array<uint32_t, 5>& args);
     uint32_t Ioctl(uint32_t fd, const std::array<uint32_t, 5>& args);
     uint32_t IoctlV(uint32_t fd, const std::array<uint32_t, 5>& args);
+    uint32_t HandleUsbIoctlV(uint32_t request, uint32_t in_count,
+                             uint32_t out_count, uint32_t vector_address);
 
     uint32_t OpenDevice(const std::string& path, uint32_t mode);
     uint32_t HandleDI(uint32_t ioctl,
