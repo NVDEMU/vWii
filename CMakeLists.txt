@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(vWii
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES CXX
     DESCRIPTION "Wii emulator for Windows and macOS"
 )
@@ -11,6 +11,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(VWII_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    zstd
+    GIT_REPOSITORY https://github.com/facebook/zstd.git
+    GIT_TAG v1.5.7
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(zstd)
 
 if(MSVC)
     add_compile_options(/W4)
@@ -29,6 +40,8 @@ add_library(vwii_core
     src/cpu/powerpc.cpp
     src/memory/memory.cpp
     src/boot/image_loader.cpp
+    src/boot/wii_game.cpp
+    src/disc/disc_image.cpp
     src/video/video_backend.cpp
 )
 
@@ -36,6 +49,8 @@ target_include_directories(vwii_core
     PUBLIC
         ${PROJECT_SOURCE_DIR}/src
 )
+
+target_link_libraries(vwii_core PRIVATE libzstd_static)
 
 target_compile_definitions(vwii_core
     PUBLIC
