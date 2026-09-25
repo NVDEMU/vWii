@@ -119,6 +119,109 @@ bool ToggleValue(bool& value) {
     return value;
 }
 
+
+enum class BindingGroup {
+    Core,
+    Nunchuk,
+    Classic,
+    Guitar,
+    Drums,
+    Turntable,
+    Tablets,
+    TaTaCon,
+    Shinkansen,
+    Motion,
+    Extensions
+};
+
+constexpr BindingGroup BindingGroupForName(const std::string& name) {
+    if (name.rfind("Nunchuk", 0) == 0) return BindingGroup::Nunchuk;
+    if (name.rfind("Classic", 0) == 0) return BindingGroup::Classic;
+    if (name.rfind("Guitar", 0) == 0) return BindingGroup::Guitar;
+    if (name.rfind("Drums", 0) == 0) return BindingGroup::Drums;
+    if (name.rfind("Turntable", 0) == 0) return BindingGroup::Turntable;
+    if (name.rfind("UDraw", 0) == 0 || name.rfind("Drawsome", 0) == 0)
+        return BindingGroup::Tablets;
+    if (name.rfind("TaTaCon", 0) == 0) return BindingGroup::TaTaCon;
+    if (name.rfind("Shinkansen", 0) == 0) return BindingGroup::Shinkansen;
+    if (name.rfind("Motion ", 0) == 0 || name.rfind("MotionPlus", 0) == 0)
+        return name.rfind("MotionPlus", 0) == 0
+            ? BindingGroup::Extensions
+            : BindingGroup::Motion;
+    if (name.rfind("Extension:", 0) == 0)
+        return BindingGroup::Extensions;
+    return BindingGroup::Core;
+}
+
+const char* BindingGroupName(BindingGroup group) {
+    switch (group) {
+    case BindingGroup::Core: return "CORE";
+    case BindingGroup::Nunchuk: return "NUNCHUK";
+    case BindingGroup::Classic: return "CLASSIC";
+    case BindingGroup::Guitar: return "GUITAR";
+    case BindingGroup::Drums: return "DRUMS";
+    case BindingGroup::Turntable: return "TURNTABLE";
+    case BindingGroup::Tablets: return "TABLETS";
+    case BindingGroup::TaTaCon: return "TATACON";
+    case BindingGroup::Shinkansen: return "SHINKANSEN";
+    case BindingGroup::Motion: return "MOTION";
+    case BindingGroup::Extensions: return "EXTENSIONS";
+    }
+    return "CORE";
+}
+
+std::vector<std::size_t> FilteredBindingIndexes(
+    const KeyboardBindings& bindings,
+    BindingGroup group) {
+    std::vector<std::size_t> indexes;
+    const auto& entries = bindings.Entries();
+
+    for (std::size_t i = 0; i < entries.size(); ++i) {
+        if (BindingGroupForName(entries[i].name) == group)
+            indexes.push_back(i);
+    }
+
+    return indexes;
+}
+
+const char* ExtensionName(input::Extension extension) {
+    switch (extension) {
+    case input::Extension::None: return "NONE";
+    case input::Extension::Nunchuk: return "NUNCHUK";
+    case input::Extension::Classic: return "CLASSIC";
+    case input::Extension::Guitar: return "GUITAR";
+    case input::Extension::Drums: return "DRUMS";
+    case input::Extension::Turntable: return "TURNTABLE";
+    case input::Extension::UDrawTablet: return "UDRAW";
+    case input::Extension::DrawsomeTablet: return "DRAWSOME";
+    case input::Extension::TaTaCon: return "TATACON";
+    case input::Extension::Shinkansen: return "SHINKANSEN";
+    }
+    return "NONE";
+}
+
+void SetExtensionFromIndex(input::WiiRemoteKeyboard* wiimote,
+                           std::size_t index) {
+    if (!wiimote)
+        return;
+
+    static constexpr input::Extension extensions[] = {
+        input::Extension::None,
+        input::Extension::Nunchuk,
+        input::Extension::Classic,
+        input::Extension::Guitar,
+        input::Extension::Drums,
+        input::Extension::Turntable,
+        input::Extension::UDrawTablet,
+        input::Extension::DrawsomeTablet,
+        input::Extension::TaTaCon,
+        input::Extension::Shinkansen
+    };
+
+    if (index < std::size(extensions))
+        wiimote->SetExtension(extensions[index]);
+}
+
 } // namespace
 
 struct DialogState {
@@ -173,6 +276,7 @@ struct Frontend::Impl {
     KeyboardBindings keyboard_bindings;
     UpdateChecker updater;
     DialogState dialogs;
+    input::WiiRemoteKeyboard* wiimote{};
 
     Page page{Page::Library};
     SettingsSection settings_section{SettingsSection::General};
@@ -180,6 +284,7 @@ struct Frontend::Impl {
     std::size_t selected_game{};
     std::size_t selected_folder{};
     std::size_t selected_binding{};
+    BindingGroup binding_group{BindingGroup::Core};
 
     bool remap_waiting{};
     bool fullscreen{};
@@ -463,7 +568,7 @@ void Frontend::HandleLibraryClick(float x, float y, int clicks) {
             continue;
 
         impl_->selected_game = index;
-        if (clicks >= 2) {
+        if (clicks >= 1) {
             impl_->launch_file = games[index].path.string();
             impl_->library.MarkRecent(games[index].path);
             impl_->status_message =
@@ -488,6 +593,53 @@ void Frontend::HandleSettingsClick(float x, float y) {
     }
 
     const float content_x = 442.0f;
+
+    if (impl_->settings_section == SettingsSection::Input) {
+        if (y >= 148.0f && y < 220.0f &&
+            x >= content_x && x < content_x + 620.0f &&
+            impl_->wiimote) {
+            const std::size_t column =
+                static_cast<std::size_t>((x - content_x) / 124.0f);
+            const std::size_t row =
+                static_cast<std::size_t>((y - 148.0f) / 34.0f);
+            const std::size_t index = row * 5 + column;
+            SetExtensionFromIndex(impl_->wiimote, index);
+            return;
+        }
+
+        if (Contains(x, y, SDL_FRect{content_x + 430, 218, 190, 30}) &&
+            impl_->wiimote) {
+            impl_->wiimote->ToggleMotionPlus();
+            return;
+        }
+
+        if (y >= 282.0f && y < 346.0f &&
+            x >= content_x && x < content_x + 620.0f) {
+            const std::size_t column =
+                static_cast<std::size_t>((x - content_x) / 104.0f);
+            const std::size_t row =
+                static_cast<std::size_t>((y - 282.0f) / 32.0f);
+            const std::size_t index = row * 6 + column;
+            static constexpr BindingGroup groups[] = {
+                BindingGroup::Core, BindingGroup::Nunchuk,
+                BindingGroup::Classic, BindingGroup::Guitar,
+                BindingGroup::Drums, BindingGroup::Turntable,
+                BindingGroup::Tablets, BindingGroup::TaTaCon,
+                BindingGroup::Shinkansen, BindingGroup::Motion,
+                BindingGroup::Extensions
+            };
+            if (index < std::size(groups)) {
+                impl_->binding_group = groups[index];
+                const auto indexes =
+                    FilteredBindingIndexes(
+                        impl_->keyboard_bindings,
+                        impl_->binding_group);
+                if (!indexes.empty())
+                    impl_->selected_binding = indexes.front();
+                return;
+            }
+        }
+    }
 
     if (impl_->settings_section == SettingsSection::Input &&
         x >= content_x && x < content_x + 620.0f &&
@@ -602,6 +754,7 @@ void Frontend::HandleSettingsClick(float x, float y) {
 
 bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
                           float delta_seconds) {
+    impl_->wiimote = wiimote;
     ProcessDialogResults();
 
     SDL_Event event{};
@@ -716,31 +869,62 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
                         continue;
                     }
 
-                    const auto& entries =
-                        impl_->keyboard_bindings.Entries();
+                    const auto indexes =
+                        FilteredBindingIndexes(
+                            impl_->keyboard_bindings,
+                            impl_->binding_group);
 
-                    if (!entries.empty()) {
+                    if (!indexes.empty()) {
+                        std::size_t position = 0;
+                        for (std::size_t i = 0; i < indexes.size(); ++i) {
+                            if (indexes[i] == impl_->selected_binding) {
+                                position = i;
+                                break;
+                            }
+                        }
+
                         if (scancode == SDL_SCANCODE_UP) {
-                            if (impl_->selected_binding > 0)
-                                --impl_->selected_binding;
+                            if (position > 0)
+                                --position;
+                            impl_->selected_binding = indexes[position];
                         } else if (scancode == SDL_SCANCODE_DOWN) {
-                            if (impl_->selected_binding + 1 <
-                                entries.size())
-                                ++impl_->selected_binding;
+                            if (position + 1 < indexes.size())
+                                ++position;
+                            impl_->selected_binding = indexes[position];
+                        } else if (scancode == SDL_SCANCODE_LEFT) {
+                            int group =
+                                static_cast<int>(impl_->binding_group);
+                            group = std::max(0, group - 1);
+                            impl_->binding_group =
+                                static_cast<BindingGroup>(group);
+                            const auto next =
+                                FilteredBindingIndexes(
+                                    impl_->keyboard_bindings,
+                                    impl_->binding_group);
+                            if (!next.empty())
+                                impl_->selected_binding = next.front();
+                        } else if (scancode == SDL_SCANCODE_RIGHT) {
+                            int group =
+                                static_cast<int>(impl_->binding_group);
+                            group = std::min(10, group + 1);
+                            impl_->binding_group =
+                                static_cast<BindingGroup>(group);
+                            const auto next =
+                                FilteredBindingIndexes(
+                                    impl_->keyboard_bindings,
+                                    impl_->binding_group);
+                            if (!next.empty())
+                                impl_->selected_binding = next.front();
                         } else if (scancode == SDL_SCANCODE_PAGEUP) {
-                            impl_->selected_binding =
-                                impl_->selected_binding > 10
-                                    ? impl_->selected_binding - 10
-                                    : 0;
+                            position = position > 9 ? position - 9 : 0;
+                            impl_->selected_binding = indexes[position];
                         } else if (scancode == SDL_SCANCODE_PAGEDOWN) {
-                            impl_->selected_binding =
-                                std::min(
-                                    impl_->selected_binding + 10,
-                                    entries.size() - 1);
+                            position = std::min(position + 9, indexes.size() - 1);
+                            impl_->selected_binding = indexes[position];
                         } else if (scancode == SDL_SCANCODE_HOME) {
-                            impl_->selected_binding = 0;
+                            impl_->selected_binding = indexes.front();
                         } else if (scancode == SDL_SCANCODE_END) {
-                            impl_->selected_binding = entries.size() - 1;
+                            impl_->selected_binding = indexes.back();
                         } else if (scancode == SDL_SCANCODE_RETURN ||
                                    scancode == SDL_SCANCODE_KP_ENTER) {
                             impl_->remap_waiting = true;
@@ -810,6 +994,10 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
 
 bool Frontend::SettingsOpen() const {
     return impl_->page == Page::Settings;
+}
+
+void Frontend::SetStatusMessage(std::string message) {
+    impl_->status_message = std::move(message);
 }
 
 std::string Frontend::ConsumeDroppedFile() {
@@ -1122,52 +1310,178 @@ void Frontend::RenderSettings() {
         break;
 
     case SettingsSection::Input: {
-        Text(impl_->renderer, x, 114,
-             "INPUT / KEYBOARD MAPPING", TextColor);
+        Text(impl_->renderer, x, 108,
+             "WII REMOTE / MOTION / EXTENSIONS", TextColor);
 
         Text(
-            impl_->renderer, x, 134,
-            "ENTER remap   DELETE clear   R reset   F5 reset all",
-            Muted);
+            impl_->renderer, x, 128,
+            "Attached extension:", Muted);
 
-        const auto& entries = impl_->keyboard_bindings.Entries();
-        constexpr std::size_t VisibleRows = 17;
+        static constexpr const char* extension_buttons[] = {
+            "NONE", "NUNCHUK", "CLASSIC", "GUITAR", "DRUMS",
+            "TURNTABLE", "UDRAW", "DRAWSOME", "TATACON", "SHINKANSEN"
+        };
+
+        for (std::size_t i = 0; i < 10; ++i) {
+            const float bx =
+                x + static_cast<float>(i % 5) * 124.0f;
+            const float by =
+                148.0f + static_cast<float>(i / 5) * 34.0f;
+
+            input::Extension current =
+                impl_->wiimote
+                    ? impl_->wiimote->State().extension
+                    : input::Extension::None;
+
+            static constexpr input::Extension extensions[] = {
+                input::Extension::None,
+                input::Extension::Nunchuk,
+                input::Extension::Classic,
+                input::Extension::Guitar,
+                input::Extension::Drums,
+                input::Extension::Turntable,
+                input::Extension::UDrawTablet,
+                input::Extension::DrawsomeTablet,
+                input::Extension::TaTaCon,
+                input::Extension::Shinkansen
+            };
+
+            const bool selected = current == extensions[i];
+            FillRect(
+                impl_->renderer,
+                bx, by, 114, 28,
+                selected ? AccentSoft : Panel);
+            StrokeRect(
+                impl_->renderer,
+                bx, by, 114, 28,
+                selected ? Accent : Border);
+            Text(
+                impl_->renderer,
+                bx + 8, by + 8,
+                extension_buttons[i],
+                selected ? TextColor : Muted);
+        }
+
+        const bool motion_plus =
+            impl_->wiimote && impl_->wiimote->State().motion_plus;
+        FillRect(
+            impl_->renderer,
+            x + 620 - 190, 218, 190, 30,
+            motion_plus ? Warning : Panel);
+        Text(
+            impl_->renderer,
+            x + 442, 227,
+            motion_plus ? "MOTIONPLUS: ON" : "MOTIONPLUS: OFF",
+            motion_plus ? Background : Muted);
+
+        Text(
+            impl_->renderer, x, 264,
+            "Control group", Muted);
+
+        static constexpr BindingGroup groups[] = {
+            BindingGroup::Core, BindingGroup::Nunchuk,
+            BindingGroup::Classic, BindingGroup::Guitar,
+            BindingGroup::Drums, BindingGroup::Turntable,
+            BindingGroup::Tablets, BindingGroup::TaTaCon,
+            BindingGroup::Shinkansen, BindingGroup::Motion,
+            BindingGroup::Extensions
+        };
+
+        for (std::size_t i = 0; i < std::size(groups); ++i) {
+            const float bx =
+                x + static_cast<float>(i % 6) * 104.0f;
+            const float by =
+                282.0f + static_cast<float>(i / 6) * 32.0f;
+
+            const bool selected =
+                groups[i] == impl_->binding_group;
+
+            FillRect(
+                impl_->renderer,
+                bx, by, 96, 26,
+                selected ? AccentSoft : Panel);
+            Text(
+                impl_->renderer,
+                bx + 6, by + 7,
+                BindingGroupName(groups[i]),
+                selected ? TextColor : Muted);
+        }
+
+        const auto indexes =
+            FilteredBindingIndexes(
+                impl_->keyboard_bindings,
+                impl_->binding_group);
+
+        if (indexes.empty()) {
+            Text(
+                impl_->renderer,
+                x, 366,
+                "No controls in this group.",
+                Muted);
+            break;
+        }
+
+        std::size_t selected_position = 0;
+        for (std::size_t i = 0; i < indexes.size(); ++i) {
+            if (indexes[i] == impl_->selected_binding) {
+                selected_position = i;
+                break;
+            }
+        }
+
+        constexpr std::size_t VisibleRows = 9;
         const std::size_t first =
-            (impl_->selected_binding / VisibleRows) * VisibleRows;
+            (selected_position / VisibleRows) * VisibleRows;
         const std::size_t last =
-            std::min(first + VisibleRows, entries.size());
+            std::min(first + VisibleRows, indexes.size());
 
-        for (std::size_t i = first; i < last; ++i) {
+        for (std::size_t position = first;
+             position < last; ++position) {
+            const std::size_t index = indexes[position];
             const float y =
-                162 + static_cast<float>(i - first) * 28;
+                344.0f + static_cast<float>(position - first) * 34.0f;
 
-            if (i == impl_->selected_binding)
-                FillRect(impl_->renderer, x, y - 4, 620, 24,
-                         AccentSoft);
+            if (index == impl_->selected_binding)
+                FillRect(
+                    impl_->renderer, x, y - 5, 620, 30,
+                    AccentSoft);
 
             Text(
                 impl_->renderer,
-                x + 12, y,
-                Shorten(entries[i].name, 34),
+                x + 12, y + 5,
+                Shorten(
+                    impl_->keyboard_bindings.Entries()[index].name,
+                    42),
                 TextColor);
+
+            const SDL_Scancode scancode =
+                impl_->keyboard_bindings.Entries()[index].scancode;
             const char* name =
-                entries[i].scancode == SDL_SCANCODE_UNKNOWN
+                scancode == SDL_SCANCODE_UNKNOWN
                     ? "UNBOUND"
-                    : SDL_GetScancodeName(entries[i].scancode);
+                    : SDL_GetScancodeName(scancode);
+
             Text(
                 impl_->renderer,
-                x + 430, y,
+                x + 456, y + 5,
                 name && *name ? name : "UNKNOWN",
-                i == impl_->selected_binding ? Accent : Muted);
+                index == impl_->selected_binding
+                    ? Accent
+                    : Muted);
         }
 
         if (impl_->remap_waiting) {
-            FillRect(impl_->renderer, x, 640, 620, 38, Warning);
+            FillRect(
+                impl_->renderer, x, 656, 620, 32, Warning);
             Text(
-                impl_->renderer,
-                x + 14, 652,
+                impl_->renderer, x + 12, 665,
                 "PRESS A KEY TO ASSIGN  (ESC CANCELS)",
                 Background);
+        } else {
+            Text(
+                impl_->renderer, x, 664,
+                "ENTER remap   DELETE clear   R reset   F5 reset all   PgUp/PgDn page",
+                Muted);
         }
 
         break;
