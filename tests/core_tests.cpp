@@ -54,14 +54,14 @@ int main() {
     emulator.Memory().Write32(0x80001004, two);
 
     // lfs f1,0(r0)  / lfs f2,4(r0)
-    emulator.Memory().Write32(0x80002000, 0xC0201000);
-    emulator.Memory().Write32(0x80002004, 0xC0401004);
+    emulator.Memory().Write32(0x80002000, 0xC0200000);
+    emulator.Memory().Write32(0x80002004, 0xC0400004);
 
     // fadds f3,f1,f2
     emulator.Memory().Write32(0x80002008, 0xEC61102A);
 
     // stfs f3,8(r0)
-    emulator.Memory().Write32(0x8000200C, 0xD0601008);
+    emulator.Memory().Write32(0x8000200C, 0xD0600008);
 
     emulator.CPU().Reset(0x80002000);
     for (int i = 0; i < 4; ++i)
