@@ -131,6 +131,12 @@ boot::WiiBootResult Emulator::LoadWiiGame(const std::string& path) {
     }
 
     cpu_.Reset(result.dol_result.entry_point);
+
+    // The real boot chain establishes an initial PPC stack before entering
+    // the apploader/Main DOL. We bypass executable apploader code for now,
+    // so establish a conservative Wii-compatible stack here.
+    cpu_.SetGPR(1, 0x817FEC60);
+    cpu_.SetGPR(2, 0);
     loaded_image_ = true;
     return result;
 }
