@@ -19,7 +19,8 @@ constexpr uint32_t PeripheralSize = 0x10000;
 Memory::Memory()
     : mem1_(MEM1_SIZE, 0),
       mem2_(MEM2_SIZE, 0),
-      peripheral_regs_(PeripheralSize, 0) {
+      peripheral_regs_(PeripheralSize, 0),
+      video_(hollywood_) {
 }
 
 void Memory::Reset() {
@@ -27,6 +28,9 @@ void Memory::Reset() {
     std::fill(mem2_.begin(), mem2_.end(), 0);
     std::fill(peripheral_regs_.begin(), peripheral_regs_.end(), 0);
     hollywood_.Reset();
+    video_.Reset();
+    gx_.Reset();
+    audio_.Reset();
 }
 
 bool Memory::IsHollywoodRegister(uint32_t address) const {
@@ -101,6 +105,16 @@ std::size_t Memory::RegionRemaining(uint32_t address) const {
 }
 
 uint8_t Memory::Read8(uint32_t address) const {
+    if (address >= 0xCC002000 && address < 0xCC003000) {
+        const uint32_t value = video_.Read32(address & ~3u);
+        return static_cast<uint8_t>(value >> (8 * (3 - (address & 3u))));
+    }
+
+    if (address >= 0xCC006C00 && address < 0xCC006C40) {
+        const uint32_t value = audio_.Read32(address & ~3u);
+        return static_cast<uint8_t>(value >> (8 * (3 - (address & 3u))));
+    }
+
     if (IsHollywoodRegister(address)) {
         const uint32_t value = hollywood_.Read32(HollywoodRegisterAddress(address & ~3u));
         const unsigned shift = 8 * (3 - (address & 3u));
@@ -119,6 +133,18 @@ uint16_t Memory::Read16(uint32_t address) const {
 }
 
 uint32_t Memory::Read32(uint32_t address) const {
+    if (address >= 0xCC002000 && address < 0xCC003000) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned VI 32-bit read");
+        return video_.Read32(address);
+    }
+
+    if (address >= 0xCC006C00 && address < 0xCC006C40) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned AI 32-bit read");
+        return audio_.Read32(address);
+    }
+
     if (IsHollywoodRegister(address)) {
         if ((address & 3u) != 0)
             throw std::out_of_range("vWii: unaligned Hollywood 32-bit read");
@@ -132,6 +158,32 @@ uint32_t Memory::Read32(uint32_t address) const {
 }
 
 void Memory::Write8(uint32_t address, uint8_t value) {
+    if (address >= 0xCC002000 && address < 0xCC003000) {
+        const uint32_t current = video_.Read32(address & ~3u);
+        const unsigned shift = 8 * (3 - (address & 3u));
+        video_.Write32(
+            address & ~3u,
+            (current & ~(0xFFu << shift)) |
+            (static_cast<uint32_t>(value) << shift));
+        return;
+    }
+
+    if (address >= 0xCC006C00 && address < 0xCC006C40) {
+        const uint32_t current = audio_.Read32(address & ~3u);
+        const unsigned shift = 8 * (3 - (address & 3u));
+        audio_.Write32(
+            address & ~3u,
+            (current & ~(0xFFu << shift)) |
+            (static_cast<uint32_t>(value) << shift));
+        return;
+    }
+
+    if (address >= 0xCC008000 && address < 0xCC009000) {
+        if ((address & 3u) == 0)
+            gx_.Write32(address, value << 24);
+        return;
+    }
+
     if (IsHollywoodRegister(address)) {
         const uint32_t register_address = HollywoodRegisterAddress(address & ~3u);
         uint32_t current = hollywood_.Read32(register_address);
@@ -157,6 +209,25 @@ void Memory::Write16(uint32_t address, uint16_t value) {
 }
 
 void Memory::Write32(uint32_t address, uint32_t value) {
+    if (address >= 0xCC002000 && address < 0xCC003000) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned VI 32-bit write");
+        video_.Write32(address, value);
+        return;
+    }
+
+    if (address >= 0xCC006C00 && address < 0xCC006C40) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned AI 32-bit write");
+        audio_.Write32(address, value);
+        return;
+    }
+
+    if (address >= 0xCC008000 && address < 0xCC009000) {
+        gx_.Write32(address, value);
+        return;
+    }
+
     if (IsHollywoodRegister(address)) {
         if ((address & 3u) != 0)
             throw std::out_of_range("vWii: unaligned Hollywood 32-bit write");
