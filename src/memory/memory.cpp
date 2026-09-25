@@ -10,6 +10,7 @@ namespace {
 
 constexpr uint32_t HollywoodBase = 0x0D800000;
 constexpr uint32_t HollywoodMirrorBase = 0xCD800000;
+constexpr uint32_t HollywoodIpcMirrorBase = 0xCD000000;
 constexpr uint32_t HollywoodSize = 0x400;
 
 } // namespace
@@ -26,12 +27,15 @@ void Memory::Reset() {
 
 bool Memory::IsHollywoodRegister(uint32_t address) const {
     return (address >= HollywoodBase && address < HollywoodBase + HollywoodSize) ||
-           (address >= HollywoodMirrorBase && address < HollywoodMirrorBase + HollywoodSize);
+           (address >= HollywoodMirrorBase && address < HollywoodMirrorBase + HollywoodSize) ||
+           (address >= HollywoodIpcMirrorBase && address < HollywoodIpcMirrorBase + HollywoodSize);
 }
 
 uint32_t Memory::HollywoodRegisterAddress(uint32_t address) const {
     if (address >= HollywoodMirrorBase)
         return HollywoodBase + (address - HollywoodMirrorBase);
+    if (address >= HollywoodIpcMirrorBase)
+        return HollywoodBase + (address - HollywoodIpcMirrorBase);
     return address;
 }
 
