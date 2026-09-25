@@ -114,8 +114,12 @@ uint32_t IOSHLE::OpenDevice(const std::string& path, uint32_t mode) {
     if (path == "/dev/stm/eventhook")
         return FD_STM;
 
-    if (!path.empty() && path.front() == '/' && nand_)
-        return static_cast<uint32_t>(nand_->Open(path, mode));
+    if (!path.empty() && path.front() == '/') {
+        if (path.rfind("/dev/", 0) == 0)
+            return ErrorNoSuchDevice;
+        if (nand_)
+            return static_cast<uint32_t>(nand_->Open(path, mode));
+    }
 
     return ErrorNoSuchDevice;
 }
