@@ -161,7 +161,7 @@ void PowerPC::RaiseException(uint32_t vector, uint32_t reason) {
     srr0_ = pc_;
     srr1_ = msr_ | reason;
     msr_ &= ~(MSR_EE | MSR_PR | MSR_IR | MSR_DR);
-    pc_ = vector;
+    pc_ = 0x80000000u + vector;
 }
 
 void PowerPC::Step() {
