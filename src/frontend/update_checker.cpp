@@ -157,16 +157,66 @@ UpdateChecker::Result UpdateChecker::GetResult() const {
     return result_;
 }
 
-void UpdateChecker::OpenLatest() const {
+std::string UpdateChecker::DownloadLatest() {
     const Result result = GetResult();
+    if (result.asset_url.empty())
+        return {};
 
-    if (!result.asset_url.empty()) {
-        SDL_OpenURL(result.asset_url.c_str());
-        return;
+    std::filesystem::path directory;
+#if defined(_WIN32)
+    if (const char* user_profile = std::getenv("USERPROFILE"))
+        directory = std::filesystem::path(user_profile) / "Downloads";
+#elif defined(__APPLE__)
+    if (const char* home = std::getenv("HOME"))
+        directory = std::filesystem::path(home) / "Downloads";
+#endif
+
+    if (directory.empty())
+        directory = std::filesystem::temp_directory_path();
+
+    std::error_code error;
+    std::filesystem::create_directories(directory, error);
+    if (error)
+        return {};
+
+#if defined(_WIN32)
+    const std::string filename = "vWii-Windows-x64.zip";
+#elif defined(__APPLE__)
+    const std::string filename = "vWii-macOS.dmg";
+#else
+    const std::string filename = "vWii-nightly";
+#endif
+
+    const std::filesystem::path destination = directory / filename;
+    const std::filesystem::path temporary =
+        destination.string() + ".download";
+
+    std::ostringstream command;
+    command
+        << "curl -fL --retry 2 --connect-timeout 5 --max-time 600 "
+        << "-A \"vWii/" << VWII_VERSION_MAJOR << "."
+        << VWII_VERSION_MINOR << "." << VWII_VERSION_PATCH << "\" "
+        << "-o \"" << temporary.string() << "\" "
+        << "\"" << result.asset_url << "\"";
+
+    if (std::system(command.str().c_str()) != 0) {
+        std::filesystem::remove(temporary, error);
+        return {};
     }
 
-    if (!result.release_url.empty())
-        SDL_OpenURL(result.release_url.c_str());
+    std::filesystem::remove(destination, error);
+    std::filesystem::rename(temporary, destination, error);
+    if (error) {
+        std::filesystem::remove(temporary, error);
+        return {};
+    }
+
+    {
+        std::scoped_lock lock(mutex_);
+        result_.message = "Nightly downloaded to " + destination.string();
+    }
+
+    return destination.string();
 }
 
 UpdateChecker::Result UpdateChecker::CheckNow() {
