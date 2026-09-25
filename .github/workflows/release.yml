@@ -45,6 +45,14 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
 
+      - name: Normalize nightly artifact names
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mv release-assets/vWii-*-Windows-x64.zip release-assets/vWii-Windows-x64.zip
+          mv release-assets/vWii-*-macOS.dmg release-assets/vWii-macOS.dmg
+
       - name: Publish nightly GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,11 +62,20 @@ jobs:
           set -euo pipefail
 
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mapfile -t OLD_ASSETS < <(
+              gh release view "$RELEASE_TAG"                 --repo "$GITHUB_REPOSITORY"                 --json assets                 --jq '.assets[].name'
+            )
+
+            for asset in "${OLD_ASSETS[@]}"; do
+              gh release delete-asset "$RELEASE_TAG" "$asset"                 --repo "$GITHUB_REPOSITORY"                 --yes
+            done
+
             gh release edit "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."               --prerelease
-            gh release upload "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --clobber               release-assets/*
           else
-            gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --prerelease               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."               release-assets/*
+            gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --prerelease               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."
           fi
+
+          gh release upload "$RELEASE_TAG"             --repo "$GITHUB_REPOSITORY"             --clobber             release-assets/vWii-Windows-x64.zip             release-assets/vWii-macOS.dmg
 
   windows:
     name: Windows tagged release build
