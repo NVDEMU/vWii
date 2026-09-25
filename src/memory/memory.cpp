@@ -105,6 +105,11 @@ std::size_t Memory::RegionRemaining(uint32_t address) const {
 }
 
 uint8_t Memory::Read8(uint32_t address) const {
+    if (address >= 0xCC000000 && address < 0xCC000100) {
+        const uint32_t value = gx_.Read32(address & ~3u);
+        return static_cast<uint8_t>(value >> (8 * (3 - (address & 3u))));
+    }
+
     if (address >= 0xCC002000 && address < 0xCC003000) {
         const uint32_t value = video_.Read32(address & ~3u);
         return static_cast<uint8_t>(value >> (8 * (3 - (address & 3u))));
@@ -133,6 +138,12 @@ uint16_t Memory::Read16(uint32_t address) const {
 }
 
 uint32_t Memory::Read32(uint32_t address) const {
+    if (address >= 0xCC000000 && address < 0xCC000100) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned GX register read");
+        return gx_.Read32(address);
+    }
+
     if (address >= 0xCC002000 && address < 0xCC003000) {
         if ((address & 3u) != 0)
             throw std::out_of_range("vWii: unaligned VI 32-bit read");
@@ -158,6 +169,16 @@ uint32_t Memory::Read32(uint32_t address) const {
 }
 
 void Memory::Write8(uint32_t address, uint8_t value) {
+    if (address >= 0xCC000000 && address < 0xCC000100) {
+        const uint32_t current = gx_.Read32(address & ~3u);
+        const unsigned shift = 8 * (3 - (address & 3u));
+        gx_.Write32(
+            address & ~3u,
+            (current & ~(0xFFu << shift)) |
+            (static_cast<uint32_t>(value) << shift));
+        return;
+    }
+
     if (address >= 0xCC002000 && address < 0xCC003000) {
         const uint32_t current = video_.Read32(address & ~3u);
         const unsigned shift = 8 * (3 - (address & 3u));
@@ -209,6 +230,13 @@ void Memory::Write16(uint32_t address, uint16_t value) {
 }
 
 void Memory::Write32(uint32_t address, uint32_t value) {
+    if (address >= 0xCC000000 && address < 0xCC000100) {
+        if ((address & 3u) != 0)
+            throw std::out_of_range("vWii: unaligned GX register write");
+        gx_.Write32(address, value);
+        return;
+    }
+
     if (address >= 0xCC002000 && address < 0xCC003000) {
         if ((address & 3u) != 0)
             throw std::out_of_range("vWii: unaligned VI 32-bit write");
