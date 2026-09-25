@@ -6,17 +6,8 @@
 
 namespace vwii::boot {
 
-WiiBootResult LoadWiiGame(const std::string& path, memory::Memory& memory) {
+WiiBootResult LoadWiiGame(disc::DiscImage& image, memory::Memory& memory) {
     WiiBootResult result;
-
-    disc::DiscImage image;
-    if (!image.Open(path)) {
-        result.error = image.Info().error.empty()
-            ? "Unable to open RVZ image"
-            : image.Info().error;
-        return result;
-    }
-
     result.disc = image.Info();
 
     std::vector<uint8_t> dol;
@@ -39,6 +30,19 @@ WiiBootResult LoadWiiGame(const std::string& path, memory::Memory& memory) {
     result.dol_result.entry_point = entry_point;
     result.success = true;
     return result;
+}
+
+WiiBootResult LoadWiiGame(const std::string& path, memory::Memory& memory) {
+    disc::DiscImage image;
+    if (!image.Open(path)) {
+        WiiBootResult result;
+        result.error = image.Info().error.empty()
+            ? "Unable to open RVZ image"
+            : image.Info().error;
+        return result;
+    }
+
+    return LoadWiiGame(image, memory);
 }
 
 } // namespace vwii::boot
