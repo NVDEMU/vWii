@@ -123,7 +123,7 @@ void PowerPC::SetCR0FromResult(uint32_t value) {
         SetCRField(0, 4);
 }
 
-bool PowerPC::ConditionBit(unsigned bo, unsigned bi) const {
+bool PowerPC::ConditionBit(unsigned bo, unsigned bi) {
     const bool condition = GetCRBit(bi) != 0;
 
     if ((bo & 4) == 0) {
