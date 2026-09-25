@@ -70,6 +70,19 @@ int main() {
 
     assert(emulator.Memory().Read32(0x80001008) == 0x40400000);
 
+    // LWARX/STWCX. reservation semantics.
+    emulator.Memory().Write32(0x80001100, 0xAABBCCDD);
+    emulator.Memory().Write32(0x80003000, 0x7C601028); // lwarx r3,0,r6
+    emulator.Memory().Write32(0x80003004, 0x7C60112D); // stwcx. r3,0,r2
+    emulator.CPU().Reset(0x80003000);
+    emulator.CPU().SetGPR(6, 0x80001100);
+    emulator.CPU().SetGPR(2, 0x80001100);
+    emulator.CPU().SetGPR(3, 0x11223344);
+    emulator.Step();
+    assert(emulator.CPU().GetGPR(3) == 0xAABBCCDD);
+    emulator.Step();
+    assert(emulator.Memory().Read32(0x80001100) == 0x11223344);
+
     // Persistent host-backed NAND file I/O.
     const std::filesystem::path test_nand =
         std::filesystem::temp_directory_path() / "vwii-core-test-nand";
