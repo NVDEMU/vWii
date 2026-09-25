@@ -398,7 +398,6 @@ std::array<uint8_t, 22> WiiRemoteKeyboard::BuildReport() const {
 
     Put16BE(report, 1, state_.buttons);
 
-    // 0x80 is zero-G and 0x9A is nominal +1G on Dolphin's emulated sensor model.
     constexpr float ZeroG = 0x80;
     constexpr float OneG = 0x9A;
     const auto accel = [&](float value) {
@@ -409,13 +408,12 @@ std::array<uint8_t, 22> WiiRemoteKeyboard::BuildReport() const {
     report[4] = accel(state_.accel_y);
     report[5] = accel(state_.accel_z);
 
-    // Basic IR: use the two most visible points so games that read the pointer
-    // see stable cursor coordinates even without a physical sensor bar.
     const uint16_t ir_x = static_cast<uint16_t>(
         0x007F + state_.ir_x * (0x0380 - 0x007F));
     const uint16_t ir_y = static_cast<uint16_t>(
         0x005D + state_.ir_y * (0x02A2 - 0x005D));
 
+    // Basic IR report occupies bytes 6..15.
     report[6] = static_cast<uint8_t>(ir_x & 0xFF);
     report[7] = static_cast<uint8_t>(ir_y & 0xFF);
     report[8] = static_cast<uint8_t>(
@@ -424,43 +422,46 @@ std::array<uint8_t, 22> WiiRemoteKeyboard::BuildReport() const {
     report[9] = report[6];
     report[10] = report[7];
     report[11] = report[8];
+    report[12] = 0;
+    report[13] = 0;
+    report[14] = 0;
+    report[15] = 0;
 
-    // Extension bytes. They intentionally follow Dolphin's common six-byte
-    // report payload convention, but are generated independently here.
+    // Extension payload occupies bytes 16..21.
     switch (state_.extension) {
     case Extension::Nunchuk:
-        report[165] = AxisToUnsigned(state_.nunchuk_x);
-        report[166] = AxisToUnsigned(state_.nunchuk_y);
-        report[167] = accel(state_.accel_x);
-        report[168] = accel(state_.accel_y);
-        report[169] = accel(state_.accel_z);
-        report[220] = static_cast<uint8_t>(
+        report[16] = AxisToUnsigned(state_.nunchuk_x);
+        report[17] = AxisToUnsigned(state_.nunchuk_y);
+        report[18] = accel(state_.accel_x);
+        report[19] = accel(state_.accel_y);
+        report[20] = accel(state_.accel_z);
+        report[21] = static_cast<uint8_t>(
             (state_.nunchuk_c ? 0x02 : 0) |
             (state_.nunchuk_z ? 0x01 : 0));
         break;
 
     case Extension::Classic:
-        report[165] = AxisToUnsigned(state_.classic_lx);
-        report[166] = AxisToUnsigned(state_.classic_ly);
-        report[167] = AxisToUnsigned(state_.classic_rx);
-        report[168] = AxisToUnsigned(state_.classic_ry);
-        Put16BE(report, 20, state_.classic_buttons);
+        report[16] = AxisToUnsigned(state_.classic_lx);
+        report[17] = AxisToUnsigned(state_.classic_ly);
+        report[18] = AxisToUnsigned(state_.classic_rx);
+        report[19] = AxisToUnsigned(state_.classic_ry);
+        report[20] = static_cast<uint8_t>(state_.classic_buttons >> 8);
+        report[21] = static_cast<uint8_t>(state_.classic_buttons);
         break;
 
     case Extension::Guitar:
-        report[165] = static_cast<uint8_t>(
+        report[16] = static_cast<uint8_t>(
             (state_.guitar_frets[0] ? 0x01 : 0) |
             (state_.guitar_frets[1] ? 0x02 : 0) |
             (state_.guitar_frets[2] ? 0x04 : 0) |
             (state_.guitar_frets[3] ? 0x08 : 0) |
             (state_.guitar_frets[4] ? 0x10 : 0));
-        report[166] = static_cast<uint8_t>(state_.guitar_strum + 1);
-        report[167] = AxisToUnsigned(state_.guitar_whammy);
-        report[168] = 0;
+        report[17] = static_cast<uint8_t>(state_.guitar_strum + 1);
+        report[18] = AxisToUnsigned(state_.guitar_whammy);
         break;
 
     case Extension::Drums:
-        report[165] = static_cast<uint8_t>(
+        report[16] = static_cast<uint8_t>(
             (state_.drum_pads[0] ? 0x01 : 0) |
             (state_.drum_pads[1] ? 0x02 : 0) |
             (state_.drum_pads[2] ? 0x04 : 0) |
@@ -470,42 +471,42 @@ std::array<uint8_t, 22> WiiRemoteKeyboard::BuildReport() const {
         break;
 
     case Extension::Turntable:
-        report[165] = static_cast<uint8_t>(
+        report[16] = static_cast<uint8_t>(
             (state_.turntable_green ? 0x01 : 0) |
             (state_.turntable_red ? 0x02 : 0) |
             (state_.turntable_blue ? 0x04 : 0));
-        report[166] = AxisToUnsigned(state_.turntable_deck);
-        report[167] = AxisToUnsigned(state_.turntable_crossfade);
+        report[17] = AxisToUnsigned(state_.turntable_deck);
+        report[18] = AxisToUnsigned(state_.turntable_crossfade);
         break;
 
     case Extension::UDrawTablet:
-        report[165] = AxisToUnsigned(state_.udraw_x);
-        report[166] = AxisToUnsigned(state_.udraw_y);
-        report[167] = static_cast<uint8_t>(
+        report[16] = AxisToUnsigned(state_.udraw_x);
+        report[17] = AxisToUnsigned(state_.udraw_y);
+        report[18] = static_cast<uint8_t>(
             (state_.udraw_pen ? 0x01 : 0) |
             (state_.udraw_a ? 0x02 : 0) |
             (state_.udraw_b ? 0x04 : 0));
         break;
 
     case Extension::DrawsomeTablet:
-        report[165] = AxisToUnsigned(state_.drawsome_x);
-        report[166] = AxisToUnsigned(state_.drawsome_y);
-        report[167] = static_cast<uint8_t>(
+        report[16] = AxisToUnsigned(state_.drawsome_x);
+        report[17] = AxisToUnsigned(state_.drawsome_y);
+        report[18] = static_cast<uint8_t>(
             (state_.drawsome_pen ? 0x01 : 0) |
             (state_.drawsome_a ? 0x02 : 0) |
             (state_.drawsome_b ? 0x04 : 0));
         break;
 
     case Extension::TaTaCon:
-        report[165] = static_cast<uint8_t>(
+        report[16] = static_cast<uint8_t>(
             (state_.tatacon_hit ? 0x01 : 0) |
             (state_.tatacon_rim ? 0x02 : 0));
         break;
 
     case Extension::Shinkansen:
-        report[165] = AxisToUnsigned(state_.shinkansen_throttle);
-        report[166] = AxisToUnsigned(state_.shinkansen_brake);
-        report[167] = static_cast<uint8_t>(state_.shinkansen_horn);
+        report[16] = AxisToUnsigned(state_.shinkansen_throttle);
+        report[17] = AxisToUnsigned(state_.shinkansen_brake);
+        report[18] = static_cast<uint8_t>(state_.shinkansen_horn);
         break;
 
     case Extension::None:
@@ -520,12 +521,12 @@ std::array<uint8_t, 22> WiiRemoteKeyboard::BuildReport() const {
         const int16_t roll =
             static_cast<int16_t>(state_.gyro_roll * 819.0f);
 
-        report[165] = static_cast<uint8_t>(roll);
-        report[166] = static_cast<uint8_t>(roll >> 8);
-        report[167] = static_cast<uint8_t>(pitch);
-        report[168] = static_cast<uint8_t>(pitch >> 8);
-        report[169] = static_cast<uint8_t>(yaw);
-        report[220] = static_cast<uint8_t>(yaw >> 8);
+        report[16] = static_cast<uint8_t>(roll);
+        report[17] = static_cast<uint8_t>(roll >> 8);
+        report[18] = static_cast<uint8_t>(pitch);
+        report[19] = static_cast<uint8_t>(pitch >> 8);
+        report[20] = static_cast<uint8_t>(yaw);
+        report[21] = static_cast<uint8_t>(yaw >> 8);
     }
 
     return report;
