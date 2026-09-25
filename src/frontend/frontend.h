@@ -50,7 +50,18 @@ public:
     void Present(const Status& status, const memory::Memory* memory = nullptr);
 
 private:
+    void LoadConfig();
+    void SaveConfig() const;
+    void OpenFolderDialog();
+    void OpenGameDialog();
+    void ProcessDialogResults();
+    void HandleLibraryClick(float x, float y, int clicks);
+    void HandleSettingsClick(float x, float y);
+    void RenderSidebar();
+    void RenderLibrary(const Status& status);
     void RenderSettings();
+    void RenderAbout();
+    void RenderXfb(const Status& status, const memory::Memory* memory);
 
     struct Impl;
     std::unique_ptr<Impl> impl_;
