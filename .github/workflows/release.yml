@@ -25,9 +25,13 @@ jobs:
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
 
-      - name: Smoke test executable
-        run: |
-          ${{ runner.os == 'Windows' && 'build/Release/vwii.exe --self-test' || 'build/vwii.app/Contents/MacOS/vwii --self-test' }}
+      - name: Smoke test executable (Windows)
+        if: runner.os == 'Windows'
+        run: .\\build\\Release\\vwii.exe --self-test
+
+      - name: Smoke test executable (macOS)
+        if: runner.os == 'macOS'
+        run: ./build/vwii.app/Contents/MacOS/vwii --self-test
 
       - name: Package
         shell: pwsh
