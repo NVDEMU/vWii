@@ -407,16 +407,33 @@ bool DiscImage::OpenRvz() {
 
     info_.format = "RVZ";
     info_.wii = true;
-    info_.disc_size = ReadBE64(disc, 0x10);
 
-    if (!LoadRvzTables())
+    // iso_file_size lives in the fixed WIA/RVZ file header at 0x18.
+    // The bytes at 0x10 in wia_disc_t are the dhead[0] bytes instead.
+    std::array<uint8_t, 0x28> file_header{};
+    if (!ReadFile(0, file_header.data(), file_header.size())) {
+        info_.error = "Unable to read the RVZ file header";
         return false;
+    }
+    info_.disc_size = ReadBE64Raw(file_header.data() + 0x18);
+    if (info_.disc_size == 0) {
+        info_.error = "RVZ header reports an invalid disc size";
+        return false;
+    }
+
+    if (!LoadRvzTables()) {
+        if (info_.error.empty())
+            info_.error = "Unable to read the RVZ metadata tables";
+        return false;
+    }
 
     info_.valid = true;
 
     std::array<uint8_t, 0x20> partition_header{};
-    if (!Read(0x40000, partition_header.data(), partition_header.size()))
+    if (!Read(0x40000, partition_header.data(), partition_header.size())) {
+        info_.error = "Unable to read the Wii partition table from the RVZ";
         return false;
+    }
 
     std::vector<std::pair<uint64_t, uint32_t>> disc_partitions;
 
@@ -449,8 +466,10 @@ bool DiscImage::OpenRvz() {
         }
     }
 
-    if (disc_partitions.empty())
+    if (disc_partitions.empty()) {
+        info_.error = "RVZ contains no disc partitions";
         return false;
+    }
 
     std::size_t record = 0;
     for (const auto& [partition_offset, type] : disc_partitions) {
@@ -466,8 +485,10 @@ bool DiscImage::OpenRvz() {
         ++record;
     }
 
-    if (game_partition_index_ == static_cast<std::size_t>(-1))
+    if (game_partition_index_ == static_cast<std::size_t>(-1)) {
+        info_.error = "RVZ contains no DATA game partition";
         return false;
+    }
 
     const auto& selected_partition = partitions_[game_partition_index_];
     game_partition_first_sector_ = selected_partition.regions[0].first_sector;
@@ -494,12 +515,19 @@ bool DiscImage::OpenRvz() {
     game_partition_data_size_ = max_end;
 
     std::array<uint8_t, 8> game_id{};
-    if (!Read(0, game_id.data(), 8))
+    if (!Read(0, game_id.data(), 8)) {
+        info_.error = "Unable to read the RVZ disc header";
         return false;
+    }
 
     info_.game_id.assign(reinterpret_cast<const char*>(game_id.data()), 6);
 
-    return game_partition_data_size_ != 0;
+    if (game_partition_data_size_ == 0) {
+        info_.error = "RVZ DATA partition contains no readable game data";
+        return false;
+    }
+
+    return true;
 }
 
 bool DiscImage::DecodeRvzPacking(const std::vector<uint8_t>& packed,
