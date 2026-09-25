@@ -20,6 +20,8 @@ Current milestones include:
 - Tag-based GitHub Releases
 - Windows x64 ZIP release
 - macOS .app packaged inside a DMG
+- SDL3 cross-platform GUI with RVZ drag-and-drop
+- persistent host-backed NAND filesystem
 
 ## Booting a Wii game
 
@@ -37,7 +39,16 @@ For early debugging, a limited instruction-run mode is available:
 vwii --boot "My Wii Game.rvz" --run 1000
 ```
 
-The emulator does not yet implement the full Wii boot environment, IOS services, GPU pipeline, audio system, or complete Wii device model, so successful DOL loading does not mean a retail game is fully playable yet.
+The emulator is still low-compatibility. The current boot path bypasses executable apploader code and starts the extracted Main DOL with a reconstructed Wii boot environment. IOS/DIs, NAND, Hollywood IPC, CPU exceptions, and common PowerPC/FPU operations are present, but GX/VI rendering, DSP/audio, complete IOS/ES behavior, MMU/TLBs, and controller hardware are still incomplete.
+
+
+### GUI
+
+Launching vWii without arguments opens the GUI. Drag a legally obtained .rvz file onto the window to start a game.
+
+### NAND
+
+The HLE IOS filesystem stores persistent data under the user's application-data directory. This gives titles a real host-backed place for save/configuration files even before a full NAND emulation layer is implemented.
 
 ## Releases
 
@@ -50,8 +61,8 @@ git push origin v0.2.0
 
 GitHub Actions then builds:
 
-- vWii-v0.2.0-Windows-x64.zip
-- vWii-v0.2.0-macOS.dmg
+- vWii-v0.3.0-Windows-x64.zip
+- vWii-v0.3.0-macOS.dmg
 
 The macOS DMG contains vWii.app.
 
@@ -95,7 +106,7 @@ Planned major subsystems:
 10. Save states, debugger, logging, and configuration
 11. Cross-platform graphical frontend
 
-Dolphin's public RVZ documentation confirms that RVZ is based on WIA, supports Zstandard, and stores Wii partition data in a decrypted/hash-stripped representation. citeturn971787search0turn630050view0
+Dolphin documents RVZ as a WIA-derived format with Zstandard support and decrypted/hash-stripped Wii partition data, which is the format handled by vWii's current disc backend. citeturn111428view0
 
 ## Scope note
 
