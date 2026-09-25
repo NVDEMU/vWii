@@ -408,7 +408,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             const uint32_t address = ReadBaseRegister(ra) +
                                      ReadBaseRegister(rb);
             memory_.Write32(address, gpr_[RS(instruction)]);
-            SetCR0FromResult(0);
+            SetCRField(0, 2);
             break;
         }
 
