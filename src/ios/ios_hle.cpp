@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <span>
 #include <string>
 #include <vector>
 
