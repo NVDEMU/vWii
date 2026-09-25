@@ -6,7 +6,10 @@
 #include <utility>
 #include <vector>
 
+#include "hardware/audio_interface.h"
+#include "hardware/gx_fifo.h"
 #include "hardware/hollywood.h"
+#include "hardware/video_interface.h"
 
 namespace vwii::memory {
 
@@ -33,6 +36,9 @@ public:
     void Fill(uint32_t address, std::size_t size, uint8_t value);
 
     [[nodiscard]] hardware::Hollywood& Hollywood() { return hollywood_; }
+    [[nodiscard]] hardware::VideoInterface& Video() { return video_; }
+    [[nodiscard]] hardware::GXFifo& GX() { return gx_; }
+    [[nodiscard]] hardware::AudioInterface& Audio() { return audio_; }
     [[nodiscard]] const hardware::Hollywood& Hollywood() const { return hollywood_; }
     [[nodiscard]] bool ExternalInterruptPending() const {
         return hollywood_.PpcInterruptPending();
@@ -52,6 +58,9 @@ private:
     std::vector<uint8_t> mem2_;
     std::vector<uint8_t> peripheral_regs_;
     hardware::Hollywood hollywood_{};
+    hardware::VideoInterface video_;
+    hardware::GXFifo gx_{};
+    hardware::AudioInterface audio_{};
 };
 
 } // namespace vwii::memory
