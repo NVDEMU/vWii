@@ -1,4 +1,5 @@
 #include "core/emulator.h"
+#include "input/wiimote_keyboard.h"
 
 #include <cassert>
 #include <cstdint>
@@ -82,6 +83,29 @@ int main() {
     assert(emulator.CPU().GetGPR(3) == 0xAABBCCDD);
     emulator.Step();
     assert(emulator.Memory().Read32(0x80001100) == 0x11223344);
+
+    // Virtual Wii Remote keyboard/report path.
+    vwii::input::WiiRemoteKeyboard wiimote;
+    wiimote.KeyEvent(vwii::input::Key::A, true);
+    wiimote.KeyEvent(vwii::input::Key::NunchukZ, true);
+    wiimote.SetExtension(vwii::input::Extension::Nunchuk);
+    const auto wiimote_report = wiimote.BuildReport();
+
+    assert(wiimote_report[0] == 0x37);
+    assert((wiimote_report[1] & 0x08) != 0);
+    assert(wiimote_report[21] & 0x01);
+
+    wiimote.ToggleMotionPlus();
+    wiimote.KeyEvent(vwii::input::Key::MotionYawRight, true);
+    wiimote.Update(0.016f);
+
+    const auto motion_report = wiimote.BuildReport();
+    assert(motion_report[0] == 0x37);
+    assert(motion_report[20] != 0 || motion_report[21] != 0);
+
+    wiimote.KeyEvent(vwii::input::Key::A, false);
+    wiimote.KeyEvent(vwii::input::Key::NunchukZ, false);
+    wiimote.KeyEvent(vwii::input::Key::MotionYawRight, false);
 
     // Persistent host-backed NAND file I/O.
     const std::filesystem::path test_nand =
