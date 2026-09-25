@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vWii
     VERSION 0.3.0
-    LANGUAGES CXX
+    LANGUAGES C CXX
     DESCRIPTION "Wii emulator for Windows and macOS"
 )
 
