@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <utility>
+
 namespace vwii::frontend {
 
 struct Frontend::Impl {
