@@ -153,6 +153,7 @@ void SendMappedKey(input::WiiRemoteKeyboard* wiimote,
     case SDL_SCANCODE_COMMA: send(input::Key::ClassicZL); break;
     case SDL_SCANCODE_PERIOD: send(input::Key::ClassicZR); break;
 
+    case SDL_SCANCODE_F1: send(input::Key::ExtensionNone); break;
     case SDL_SCANCODE_F2: send(input::Key::ExtensionNunchuk); break;
     case SDL_SCANCODE_F3: send(input::Key::ExtensionClassic); break;
     case SDL_SCANCODE_F4: send(input::Key::ExtensionGuitar); break;
@@ -369,6 +370,7 @@ bool IsMappedKey(SDL_Scancode scancode) {
     case SDL_SCANCODE_SEMICOLON:
     case SDL_SCANCODE_SLASH:
     case SDL_SCANCODE_RIGHTBRACKET:
+    case SDL_SCANCODE_F1:
     case SDL_SCANCODE_F2:
     case SDL_SCANCODE_F3:
     case SDL_SCANCODE_F4:
