@@ -28,3 +28,7 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Smoke test executable
+        run: |
+          ${{ runner.os == 'Windows' && 'build/Release/vwii.exe --self-test' || 'build/vwii.app/Contents/MacOS/vwii --self-test' }}
