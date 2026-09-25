@@ -12,16 +12,20 @@ constexpr uint32_t HollywoodBase = 0x0D800000;
 constexpr uint32_t HollywoodMirrorBase = 0xCD800000;
 constexpr uint32_t HollywoodIpcMirrorBase = 0xCD000000;
 constexpr uint32_t HollywoodSize = 0x400;
+constexpr uint32_t PeripheralSize = 0x10000;
 
 } // namespace
 
 Memory::Memory()
-    : mem1_(MEM1_SIZE, 0), mem2_(MEM2_SIZE, 0) {
+    : mem1_(MEM1_SIZE, 0),
+      mem2_(MEM2_SIZE, 0),
+      peripheral_regs_(PeripheralSize, 0) {
 }
 
 void Memory::Reset() {
     std::fill(mem1_.begin(), mem1_.end(), 0);
     std::fill(mem2_.begin(), mem2_.end(), 0);
+    std::fill(peripheral_regs_.begin(), peripheral_regs_.end(), 0);
     hollywood_.Reset();
 }
 
@@ -37,6 +41,15 @@ uint32_t Memory::HollywoodRegisterAddress(uint32_t address) const {
     if (address >= HollywoodIpcMirrorBase)
         return HollywoodBase + (address - HollywoodIpcMirrorBase);
     return address;
+}
+
+bool Memory::IsPeripheralRegister(uint32_t address) const {
+    return (address >= 0xCC000000 && address < 0xCC000000 + PeripheralSize) ||
+           (address >= 0xCD000000 && address < 0xCD000000 + PeripheralSize);
+}
+
+std::size_t Memory::PeripheralOffset(uint32_t address) const {
+    return static_cast<std::size_t>(address & (PeripheralSize - 1));
 }
 
 std::pair<const uint8_t*, std::size_t> Memory::Translate(uint32_t address) const {
@@ -94,6 +107,9 @@ uint8_t Memory::Read8(uint32_t address) const {
         return static_cast<uint8_t>(value >> shift);
     }
 
+    if (IsPeripheralRegister(address))
+        return peripheral_regs_[PeripheralOffset(address)];
+
     const auto [base, offset] = Translate(address);
     return base[offset];
 }
@@ -123,6 +139,11 @@ void Memory::Write8(uint32_t address, uint8_t value) {
         current = (current & ~(0xFFu << shift)) |
                   (static_cast<uint32_t>(value) << shift);
         hollywood_.Write32(register_address, current);
+        return;
+    }
+
+    if (IsPeripheralRegister(address)) {
+        peripheral_regs_[PeripheralOffset(address)] = value;
         return;
     }
 
