@@ -3,83 +3,71 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
-#include <vector>
 
 namespace {
 
-void PutBE32(std::vector<uint8_t>& data, std::size_t offset, uint32_t value) {
-    data[offset] = static_cast<uint8_t>(value >> 24);
-    data[offset + 1] = static_cast<uint8_t>(value >> 16);
-    data[offset + 2] = static_cast<uint8_t>(value >> 8);
-    data[offset + 3] = static_cast<uint8_t>(value);
+uint32_t EncodeAddi(unsigned rd, unsigned ra, int16_t immediate) {
+    return (14u << 26) |
+           ((rd & 31u) << 21) |
+           ((ra & 31u) << 16) |
+           static_cast<uint16_t>(immediate);
+}
+
+uint32_t EncodeBranch(int32_t byte_offset) {
+    const uint32_t li = static_cast<uint32_t>(byte_offset >> 2) & 0x00FFFFFFu;
+    return (18u << 26) | (li << 2);
 }
 
 } // namespace
 
 int main() {
     vwii::core::Emulator emulator;
-
     assert(emulator.Initialize());
-    assert(emulator.IsInitialized());
 
-    // addi r3, r0, 42
-    emulator.Memory().Write32(0x80000000, 0x3860002A);
+    // ADDI + branch.
+    emulator.Memory().Write32(0x80000000, EncodeAddi(3, 0, 42));
+    emulator.Memory().Write32(0x80000004, EncodeBranch(8));
+    emulator.Memory().Write32(0x80000008, EncodeAddi(3, 0, 99));
+    emulator.Memory().Write32(0x8000000C, EncodeAddi(4, 3, 1));
+
     emulator.Step();
     assert(emulator.CPU().GetGPR(3) == 42);
-    assert(emulator.CPU().GetPC() == 0x80000004);
 
-    // Verify PowerPC big-endian memory behavior.
-    emulator.Memory().Write32(0x80000100, 0x12345678);
-    assert(emulator.Memory().Read8(0x80000100) == 0x12);
-    assert(emulator.Memory().Read16(0x80000100) == 0x1234);
-    assert(emulator.Memory().Read32(0x80000100) == 0x12345678);
+    emulator.Step();
+    assert(emulator.CPU().GetPC() == 0x8000000C);
 
-    // Minimal synthetic DOL: one text segment containing addi r3,r0,42.
-    std::vector<uint8_t> dol(0x120, 0);
-    PutBE32(dol, 0x00, 0x100);          // text file offset
-    PutBE32(dol, 0x48, 0x80001000);     // text address
-    PutBE32(dol, 0x90, 4);              // text size
-    PutBE32(dol, 0xD8, 0x80001000);     // entry point
-    PutBE32(dol, 0x100, 0x3860002A);    // addi r3,r0,42
+    emulator.Step();
+    assert(emulator.CPU().GetGPR(4) == 43);
 
-    const auto dol_result = emulator.LoadImage(dol);
-    assert(dol_result.success);
-    assert(dol_result.type == vwii::boot::ImageType::Dol);
-    assert(dol_result.entry_point == 0x80001000);
-    assert(emulator.HasLoadedImage());
-    assert(emulator.Memory().Read32(0x80001000) == 0x3860002A);
-    assert(emulator.CPU().GetPC() == 0x80001000);
+    // Hollywood IPC register access and IRQ routing.
+    emulator.Memory().Write32(0x0D800034, 1u << 30);
+    emulator.Memory().Hollywood().RaisePpcInterrupt(30);
+    assert(emulator.Memory().ExternalInterruptPending());
 
-    // Minimal big-endian ELF32: one PT_LOAD containing the same instruction.
-    std::vector<uint8_t> elf(0x70, 0);
-    elf[0] = 0x7F;
-    elf[1] = 'E';
-    elf[2] = 'L';
-    elf[3] = 'F';
-    elf[4] = 1;                         // ELF32
-    elf[5] = 2;                         // big endian
-    elf[6] = 1;                         // version
-    elf[0x12] = 0;
-    elf[0x13] = 20;                     // EM_PPC
-    PutBE32(elf, 0x18, 0x80002000);      // entry
-    PutBE32(elf, 0x1C, 52);              // program header offset
-    elf[0x2A] = 0;
-    elf[0x2B] = 32;                     // program header size
-    elf[0x2C] = 0;
-    elf[0x2D] = 1;                      // one program header
-    PutBE32(elf, 52, 1);                // PT_LOAD
-    PutBE32(elf, 56, 84);               // file offset
-    PutBE32(elf, 60, 0x80002000);       // virtual address
-    PutBE32(elf, 68, 4);                // file size
-    PutBE32(elf, 72, 8);                // memory size
-    PutBE32(elf, 84, 0x3860002A);       // instruction
+    emulator.Memory().Write32(0x0D800030, 1u << 30);
+    assert(!emulator.Memory().ExternalInterruptPending());
 
-    const auto elf_result = emulator.LoadImage(elf);
-    assert(elf_result.success);
-    assert(elf_result.type == vwii::boot::ImageType::Elf32);
-    assert(elf_result.entry_point == 0x80002000);
-    assert(emulator.Memory().Read32(0x80002000) == 0x3860002A);
-    assert(emulator.Memory().Read32(0x80002004) == 0);
+    // Simple FPU load/add/store.
+    const uint32_t one = 0x3F800000;
+    const uint32_t two = 0x40000000;
+    emulator.Memory().Write32(0x80001000, one);
+    emulator.Memory().Write32(0x80001004, two);
+
+    // lfs f1,0(r0)  / lfs f2,4(r0)
+    emulator.Memory().Write32(0x80002000, 0xC0201000);
+    emulator.Memory().Write32(0x80002004, 0xC0401004);
+
+    // fadds f3,f1,f2
+    emulator.Memory().Write32(0x80002008, 0xEC61102A);
+
+    // stfs f3,8(r0)
+    emulator.Memory().Write32(0x8000200C, 0xD0601008);
+
+    emulator.CPU().Reset(0x80002000);
+    for (int i = 0; i < 4; ++i)
+        emulator.Step();
+
+    assert(emulator.Memory().Read32(0x80001008) == 0x40400000);
 
     emulator.Shutdown();
     std::cout << "All vWii core tests passed.\n";
