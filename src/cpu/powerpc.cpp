@@ -86,6 +86,7 @@ void PowerPC::Reset(uint32_t entry_point) {
     srr0_ = 0;
     srr1_ = 0;
     fpscr_ = 0;
+    timebase_ = 0;
     halted_ = false;
 }
 
@@ -166,9 +167,15 @@ void PowerPC::Step() {
     }
 
     const uint32_t cia = pc_;
-    const uint32_t instruction = memory_.Read32(cia);
-    pc_ += 4;
-    Execute(instruction, cia);
+    try {
+        const uint32_t instruction = memory_.Read32(cia);
+        pc_ += 4;
+        Execute(instruction, cia);
+    } catch (...) {
+        RaiseException(0x300, 0);
+    }
+
+    ++timebase_;
 }
 
 void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
@@ -188,6 +195,37 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         const int32_t rhs = SIMM(instruction);
 
         SetCRField(bf, lhs < rhs ? 8 : lhs == rhs ? 2 : 4);
+        break;
+    }
+
+    case 7: { // MULLI
+        const int32_t result =
+            static_cast<int32_t>(ReadBaseRegister(RA(instruction))) *
+            static_cast<int32_t>(SIMM(instruction));
+        gpr_[RD(instruction)] = static_cast<uint32_t>(result);
+        break;
+    }
+
+    case 8: { // SUBFIC
+        const int32_t result =
+            static_cast<int32_t>(SIMM(instruction)) -
+            static_cast<int32_t>(ReadBaseRegister(RA(instruction)));
+        gpr_[RD(instruction)] = static_cast<uint32_t>(result);
+        break;
+    }
+
+    case 12: { // ADDIC
+        const uint32_t result =
+            ReadBaseRegister(RA(instruction)) + static_cast<int32_t>(SIMM(instruction));
+        gpr_[RD(instruction)] = result;
+        break;
+    }
+
+    case 13: { // ADDIC.
+        const uint32_t result =
+            ReadBaseRegister(RA(instruction)) + static_cast<int32_t>(SIMM(instruction));
+        gpr_[RD(instruction)] = result;
+        SetCR0FromResult(result);
         break;
     }
 
@@ -268,6 +306,17 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         break;
     }
 
+    case 20: { // RLWIMI
+        const unsigned rs = RS(instruction);
+        const unsigned ra = RA(instruction);
+        const uint32_t mask = Mask32(MB(instruction), ME(instruction));
+        const uint32_t rotated = RotateLeft(gpr_[rs], SH(instruction));
+        gpr_[ra] = (gpr_[ra] & ~mask) | (rotated & mask);
+        if (Rc(instruction))
+            SetCR0FromResult(gpr_[ra]);
+        break;
+    }
+
     case 21: { // RLWINM
         gpr_[RA(instruction)] =
             RotateLeft(gpr_[RS(instruction)], SH(instruction)) &
@@ -275,6 +324,18 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
 
         if (Rc(instruction))
             SetCR0FromResult(gpr_[RA(instruction)]);
+        break;
+    }
+
+    case 23: { // RLWNM
+        const unsigned rs = RS(instruction);
+        const unsigned ra = RA(instruction);
+        const unsigned shift = gpr_[RB(instruction)] & 31u;
+        gpr_[ra] =
+            RotateLeft(gpr_[rs], shift) &
+            Mask32(MB(instruction), ME(instruction));
+        if (Rc(instruction))
+            SetCR0FromResult(gpr_[ra]);
         break;
     }
 
@@ -319,14 +380,69 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         break;
     }
 
+    case 46: { // LMW
+        const unsigned rd = RD(instruction);
+        uint32_t address =
+            ReadBaseRegister(RA(instruction)) + static_cast<int32_t>(SIMM(instruction));
+
+        for (unsigned reg = rd; reg < 32; ++reg) {
+            gpr_[reg] = memory_.Read32(address);
+            address += 4;
+        }
+        break;
+    }
+
+    case 47: { // STMW
+        const unsigned rs = RS(instruction);
+        uint32_t address =
+            ReadBaseRegister(RA(instruction)) + static_cast<int32_t>(SIMM(instruction));
+
+        for (unsigned reg = rs; reg < 32; ++reg) {
+            memory_.Write32(address, gpr_[reg]);
+            address += 4;
+        }
+        break;
+    }
+
     case 31: {
         const unsigned ra = RA(instruction);
         const unsigned rb = RB(instruction);
 
         switch (XO(instruction)) {
+        case 0: { // CMPW
+            const unsigned bf = (instruction >> 23) & 7;
+            const int32_t lhs = static_cast<int32_t>(gpr_[ra]);
+            const int32_t rhs = static_cast<int32_t>(gpr_[rb]);
+            SetCRField(bf, lhs < rhs ? 8 : lhs == rhs ? 2 : 4);
+            break;
+        }
+
+        case 11: { // MULHWU
+            const uint64_t result =
+                static_cast<uint64_t>(gpr_[ra]) * gpr_[rb];
+            gpr_[RD(instruction)] = static_cast<uint32_t>(result >> 32);
+            break;
+        }
+
         case 19: // MFCR
             gpr_[RD(instruction)] = cr_;
             break;
+
+        case 8: { // SUBFC
+            const uint32_t result = gpr_[rb] - gpr_[ra];
+            gpr_[RD(instruction)] = result;
+            if (Rc(instruction))
+                SetCR0FromResult(result);
+            break;
+        }
+
+        case 10: { // ADDC
+            const uint32_t result = gpr_[ra] + gpr_[rb];
+            gpr_[RD(instruction)] = result;
+            if (Rc(instruction))
+                SetCR0FromResult(result);
+            break;
+        }
 
         case 20: { // LWARX
             const uint32_t address = ReadBaseRegister(ra) +
@@ -335,10 +451,23 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             break;
         }
 
+        case 21: { // LZX? reserved
+            RaiseException(0x700, 0);
+            break;
+        }
+
         case 23: { // LWZX
             const uint32_t address = ReadBaseRegister(ra) +
                                      ReadBaseRegister(rb);
             gpr_[RD(instruction)] = memory_.Read32(address);
+            break;
+        }
+
+        case 26: { // CNTLZW
+            const uint32_t value = gpr_[RS(instruction)];
+            gpr_[RD(instruction)] = value == 0 ? 32u : static_cast<uint32_t>(std::countl_zero(value));
+            if (Rc(instruction))
+                SetCR0FromResult(gpr_[RD(instruction)]);
             break;
         }
 
@@ -367,11 +496,88 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             break;
         }
 
+        case 75: { // MULHW
+            const int64_t result =
+                static_cast<int64_t>(static_cast<int32_t>(gpr_[ra])) *
+                static_cast<int64_t>(static_cast<int32_t>(gpr_[rb]));
+            gpr_[RD(instruction)] = static_cast<uint32_t>(result >> 32);
+            break;
+        }
+
+        case 104: { // NEG
+            const uint32_t result = 0u - gpr_[ra];
+            gpr_[RD(instruction)] = result;
+            if (Rc(instruction))
+                SetCR0FromResult(result);
+            break;
+        }
+
+        case 235: { // MULLW
+            const uint32_t result = gpr_[ra] * gpr_[rb];
+            gpr_[RD(instruction)] = result;
+            if (Rc(instruction))
+                SetCR0FromResult(result);
+            break;
+        }
+
         case 266: { // ADD
             const uint32_t result = gpr_[ra] + gpr_[rb];
             gpr_[RD(instruction)] = result;
             if (Rc(instruction))
                 SetCR0FromResult(result);
+            break;
+        }
+
+        case 279: { // LHZX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            gpr_[RD(instruction)] = memory_.Read16(address);
+            break;
+        }
+
+        case 343: { // LHAX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            gpr_[RD(instruction)] = static_cast<uint32_t>(
+                static_cast<int32_t>(static_cast<int16_t>(memory_.Read16(address))));
+            break;
+        }
+
+        case 87: { // LBZX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            gpr_[RD(instruction)] = memory_.Read8(address);
+            break;
+        }
+
+        case 534: { // LWBRX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const uint32_t value = memory_.Read32(address);
+            gpr_[RD(instruction)] = std::byteswap(value);
+            break;
+        }
+
+        case 790: { // LHBRX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const uint16_t value = memory_.Read16(address);
+            gpr_[RD(instruction)] =
+                static_cast<uint32_t>((value >> 8) | (value << 8));
+            break;
+        }
+
+        case 151: { // STWX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            memory_.Write32(address, gpr_[RS(instruction)]);
+            break;
+        }
+
+        case 662: { // STWBRX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            memory_.Write32(address, std::byteswap(gpr_[RS(instruction)]));
+            break;
+        }
+
+        case 918: { // STHBRX
+            const uint32_t address = ReadBaseRegister(ra) + ReadBaseRegister(rb);
+            const uint16_t value = static_cast<uint16_t>(gpr_[RS(instruction)]);
+            memory_.Write16(address, static_cast<uint16_t>((value >> 8) | (value << 8)));
             break;
         }
 
@@ -400,9 +606,6 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             break;
         }
 
-        case 598: // SYNC
-        case 854: // EIEIO
-            break;
 
         case 150: { // STWCX.
             const uint32_t address = ReadBaseRegister(ra) +
