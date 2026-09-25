@@ -98,7 +98,7 @@ int main() {
     assert(nand.Write(write_fd, io_address, 4) == 4);
     assert(nand.Close(write_fd) == 0);
 
-    const int read_fd = nand.Open("/test.bin", 1);
+    const int read_fd = nand.Open("/test.bin", 0);
     assert(read_fd >= 8);
     emulator.Memory().Write32(io_address, 0);
     assert(nand.Read(read_fd, io_address, 4) == 4);
