@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "ios/nand_fs.h"
+#include "input/wiimote_keyboard.h"
 #include <string>
 
 namespace vwii::disc {
@@ -23,6 +24,7 @@ public:
 
     void Reset();
     void AttachDisc(disc::DiscImage* disc);
+    void AttachWiimote(input::WiiRemoteKeyboard* wiimote);
 
     // Processes one pending PPC->IOS IPC request.
     // Returns true when a request was consumed.
@@ -70,6 +72,7 @@ private:
     disc::DiscImage* disc_{};
     std::array<FileDescriptor, 128> fds_{};
     std::unique_ptr<NandFS> nand_;
+    input::WiiRemoteKeyboard* wiimote_{};
     bool di_partition_open_{};
     bool running_{};
 };
