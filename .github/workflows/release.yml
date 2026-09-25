@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -69,12 +69,19 @@ jobs:
           cp -R build/vwii.app "dist/vWii.app"
           codesign --force --deep --sign - "dist/vWii.app"
 
+      - name: Prepare DMG contents
+        run: |
+          set -euo pipefail
+          rm -rf dmg-root
+          mkdir -p dmg-root
+          cp -R "dist/vWii.app" "dmg-root/vWii.app"
+
       - name: Create DMG
         run: |
           set -euo pipefail
           hdiutil create \
             -volname "vWii" \
-            -srcfolder "dist/vWii.app" \
+            -srcfolder "dmg-root" \
             -ov \
             -format UDZO \
             "vWii-${GITHUB_REF_NAME}-macOS.dmg"
