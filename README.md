@@ -152,3 +152,18 @@ The virtual HID layer currently covers the common Dolphin attachment set—Nunch
 ### Nightly updater
 
 vWii checks the GitHub **nightly** release automatically when the GUI starts. If a newer build is found, the Settings screen shows an update notice. Press F12 to open Settings, then F6 to open the platform-specific nightly download. The check uses the commit SHA embedded at build time, so an unchanged nightly is not reported repeatedly as a new version.
+
+
+## Modern GUI launcher
+
+The GUI now opens to a persistent game library instead of a diagnostic screen. Use **Add Folder** to index Wii game directories recursively, **Open Game** to launch an individual RVZ/ISO/WIA/WBFS/DOL/ELF, and double-click a library card to start a game. Recently launched games are kept locally for quick access.
+
+The sidebar contains **Library**, **Settings**, and **About** pages. Settings include fullscreen, VSync, nightly-update checking, performance overlay, aspect ratio, integer scaling, emulation speed, Wii Remote keyboard remapping, game-library folders, and nightly updater controls.
+
+Folder and file selection use SDL3's native file/folder dialogs, which are available in SDL 3.2+ and are supported by the SDL 3.4.x series used by vWii. citeturn733460search0turn733460search3
+
+## Nightly releases
+
+Nightly releases use stable download filenames (vWii-Windows-x64.zip and vWii-macOS.dmg). When a new nightly is published, the release workflow removes the previous nightly assets before uploading the new pair, so old builds do not accumulate.
+
+The in-app updater detects the latest nightly commit and selects the platform-specific release asset directly rather than sending the user to the generic GitHub release page.
