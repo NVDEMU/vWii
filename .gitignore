@@ -1,0 +1,36 @@
+# Build directories
+/build/
+/build-*/
+/out/
+/cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake
+compile_commands.json
+*.cmake.user
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.suo
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+
+# Binaries
+*.exe
+*.app
+*.dylib
+*.dll
