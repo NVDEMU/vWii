@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 
             uint64_t instructions = 0;
             while (frontend.PumpEvents(&emulator.Wiimote(), 0.016f)) {
-                constexpr uint64_t InstructionsPerFrame = 5000;
+                constexpr uint64_t InstructionsPerFrame = 250000;
                 if (!frontend.SettingsOpen() && !emulator.CPU().Halted()) {
                     emulator.RunForInstructions(InstructionsPerFrame);
                     instructions += InstructionsPerFrame;
@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
         }
 
         if (!frontend.SettingsOpen() && status.loaded && !emulator.CPU().Halted()) {
-            constexpr uint64_t InstructionsPerFrame = 5000;
+            constexpr uint64_t InstructionsPerFrame = 250000;
             emulator.RunForInstructions(InstructionsPerFrame);
             instructions += InstructionsPerFrame;
         }
