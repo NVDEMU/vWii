@@ -8,6 +8,11 @@ namespace vwii::memory {
 class Memory;
 }
 
+namespace vwii::input {
+class WiiRemoteKeyboard;
+enum class Key : uint8_t;
+}
+
 namespace vwii::frontend {
 
 struct Status {
@@ -36,7 +41,8 @@ public:
                     int height = 720);
 
     void Shutdown();
-    [[nodiscard]] bool PumpEvents();
+    [[nodiscard]] bool PumpEvents(input::WiiRemoteKeyboard* wiimote = nullptr,
+                                   float delta_seconds = 0.016f);
     [[nodiscard]] std::string ConsumeDroppedFile();
     void Present(const Status& status, const memory::Memory* memory = nullptr);
 
