@@ -142,7 +142,7 @@ UpdateChecker::Result UpdateChecker::CheckNow() {
         << "-A \"vWii/" << VWII_VERSION_MAJOR << "."
         << VWII_VERSION_MINOR << "." << VWII_VERSION_PATCH << "\" "
         << "-o \"" << temp_path.string() << "\" "
-        << "\" " << NightlyApi << "\"";
+        << "\"" << NightlyApi << "\"";
 
     if (std::system(command.str().c_str()) != 0) {
         result.state = State::Unavailable;
