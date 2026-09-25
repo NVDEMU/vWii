@@ -6,12 +6,14 @@
 namespace vwii::core {
 
 Emulator::Emulator()
-    : memory_(), cpu_(memory_), ios_(memory_) {
+    : memory_(), cpu_(memory_), wiimote_(), ios_(memory_) {
+    ios_.AttachWiimote(&wiimote_);
 }
 
 bool Emulator::Initialize() {
     memory_.Reset();
     cpu_.Reset();
+    wiimote_.Reset();
     ios_.Reset();
     scheduler_.Reset();
     disc_.reset();
