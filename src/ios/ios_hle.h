@@ -64,7 +64,7 @@ private:
 
     memory::Memory& memory_;
     disc::DiscImage* disc_{};
-    std::array<FileDescriptor, 32> fds_{};
+    std::array<FileDescriptor, 128> fds_{};
     std::unique_ptr<NandFS> nand_;
     bool running_{};
 };
