@@ -26,7 +26,7 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Smoke test executable
-        run: .\\build\\Release\\vwii.exe --self-test
+        run: ./build/Release/vwii.exe --self-test
 
       - name: Package
         shell: pwsh
