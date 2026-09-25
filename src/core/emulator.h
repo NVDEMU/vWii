@@ -1,6 +1,7 @@
 #pragma once
 
 #include "boot/image_loader.h"
+#include "boot/wii_game.h"
 #include "cpu/powerpc.h"
 #include "memory/memory.h"
 
@@ -23,6 +24,7 @@ public:
 
     [[nodiscard]] boot::LoadResult LoadImage(const std::vector<uint8_t>& image);
     [[nodiscard]] boot::LoadResult LoadImageFile(const std::string& path);
+    [[nodiscard]] boot::WiiBootResult LoadWiiGame(const std::string& path);
 
     [[nodiscard]] cpu::PowerPC& CPU() { return cpu_; }
     [[nodiscard]] memory::Memory& Memory() { return memory_; }
