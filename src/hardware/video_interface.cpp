@@ -95,7 +95,7 @@ XfbInfo VideoInterface::CurrentXfb() const {
     const uint32_t width_pixels =
         ((picture >> 8) & 0x7Fu) * 16u;
     const uint32_t stride_bytes =
-        (picture & 0x7Fu) * 32u;
+        (picture & 0xFFu) * 32u;
     const uint32_t active_lines =
         (vertical >> 4) & 0x3FFu;
 
