@@ -95,6 +95,8 @@ void PowerPC::Reset(uint32_t entry_point) {
     srr1_ = 0;
     fpscr_ = 0;
     timebase_ = 0;
+    reservation_address_ = 0;
+    reservation_valid_ = false;
     halted_ = false;
 }
 
@@ -501,6 +503,8 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             const uint32_t address = ReadBaseRegister(ra) +
                                      ReadBaseRegister(rb);
             gpr_[RD(instruction)] = memory_.Read32(address);
+            reservation_address_ = address & ~3u;
+            reservation_valid_ = true;
             break;
         }
 
@@ -670,6 +674,15 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
             gpr_[RD(instruction)] = ReadSPR(SPR(instruction));
             break;
 
+        case 371: { // MFTB/MFTBU
+            const unsigned tbr = SPR(instruction);
+            gpr_[RD(instruction)] =
+                tbr == 269
+                    ? static_cast<uint32_t>(timebase_ >> 32)
+                    : static_cast<uint32_t>(timebase_);
+            break;
+        }
+
         case 467: // MTSPR
             WriteSPR(SPR(instruction), gpr_[RS(instruction)]);
             break;
@@ -687,8 +700,15 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         case 150: { // STWCX.
             const uint32_t address = ReadBaseRegister(ra) +
                                      ReadBaseRegister(rb);
-            memory_.Write32(address, gpr_[RS(instruction)]);
-            SetCRField(0, 2);
+
+            const bool success =
+                reservation_valid_ && reservation_address_ == (address & ~3u);
+
+            if (success)
+                memory_.Write32(address, gpr_[RS(instruction)]);
+
+            reservation_valid_ = false;
+            SetCRField(0, success ? 2 : 4);
             break;
         }
 
@@ -911,17 +931,24 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         const float b = static_cast<float>(FPRDouble(fpr_[fb]));
 
         float result = 0.0f;
+        const float c = static_cast<float>(FPRDouble(fpr_[RS(instruction)]));
         switch (xo) {
         case 18: result = a / b; break; // FDIVS
         case 20: result = a - b; break; // FSUBS
         case 21: result = a + b; break; // FADDS
+        case 24: result = a * b - c; break; // FSUBS fused
         case 25: result = a * b; break; // FMULS
+        case 28: result = a * b + c; break; // FMSUBS alias encoding coverage
+        case 29: result = a * b + c; break; // FMADDS
+        case 30: result = -(a * b - c); break; // FNMSUBS
+        case 31: result = -(a * b + c); break; // FNMADDS
         default:
             RaiseException(0x700, 0);
             break;
         }
 
-        if (xo == 18 || xo == 20 || xo == 21 || xo == 25)
+        if (xo == 18 || xo == 20 || xo == 21 || xo == 24 ||
+            xo == 25 || xo == 28 || xo == 29 || xo == 30 || xo == 31)
             fpr_[fd] = MakeFPR(result);
         break;
     }
@@ -932,6 +959,7 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         const unsigned fb = RB(instruction);
         const unsigned xo = XO(instruction);
 
+        const double c = FPRDouble(fpr_[RS(instruction)]);
         switch (xo) {
         case 18: // FDIV
             fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) / FPRDouble(fpr_[fb]));
@@ -942,8 +970,20 @@ void PowerPC::Execute(uint32_t instruction, uint32_t cia) {
         case 21: // FADD
             fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) + FPRDouble(fpr_[fb]));
             break;
+        case 24: // FMSUB
+            fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]) - c);
+            break;
         case 25: // FMUL
             fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]));
+            break;
+        case 29: // FMADD
+            fpr_[fd] = MakeFPR(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]) + c);
+            break;
+        case 30: // FNMSUB
+            fpr_[fd] = MakeFPR(-(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]) - c));
+            break;
+        case 31: // FNMADD
+            fpr_[fd] = MakeFPR(-(FPRDouble(fpr_[fa]) * FPRDouble(fpr_[fb]) + c));
             break;
         case 40: // FNEG
             fpr_[fd] = MakeFPR(-FPRDouble(fpr_[fb]));
