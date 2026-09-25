@@ -18,6 +18,9 @@ public:
 
     [[nodiscard]] uint32_t GetPC() const { return pc_; }
     [[nodiscard]] uint32_t GetGPR(unsigned index) const { return gpr_.at(index & 31U); }
+
+    void SetGPR(unsigned index, uint32_t value) { gpr_.at(index & 31U) = value; }
+    void SetMSR(uint32_t value) { msr_ = value; }
     [[nodiscard]] uint32_t GetLR() const { return lr_; }
     [[nodiscard]] uint32_t GetCTR() const { return ctr_; }
     [[nodiscard]] uint32_t GetCR() const { return cr_; }
