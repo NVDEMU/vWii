@@ -1,6 +1,7 @@
 #include "hardware/video_interface.h"
 
 #include "hardware/hollywood.h"
+#include "memory/memory.h"
 
 namespace vwii::hardware {
 
@@ -49,32 +50,59 @@ void VideoInterface::Write32(uint32_t address, uint32_t value) {
     registers_[index + 1] = static_cast<uint16_t>(value);
 }
 
+namespace {
+
+uint32_t PhysicalToEffective(uint32_t address) {
+    // VI stores physical external-memory addresses. The CPU-side memory
+    // implementation exposes the corresponding MEM1/MEM2 effective aliases.
+    if (address < memory::Memory::MEM1_SIZE)
+        return memory::Memory::MEM1_BASE + address;
+
+    constexpr uint32_t Mem2PhysicalBase = 0x10000000;
+    if (address >= Mem2PhysicalBase &&
+        address < Mem2PhysicalBase + memory::Memory::MEM2_SIZE) {
+        return memory::Memory::MEM2_BASE +
+               (address - Mem2PhysicalBase);
+    }
+
+    return address;
+}
+
+} // namespace
+
 uint32_t VideoInterface::XfbAddressTop() const {
     const uint32_t packed = Read32(Base + 0x1C);
     const uint32_t fbb = packed & 0x00FFFFFFu;
     const bool poff = (packed & (1u << 28)) != 0;
-    return poff ? (fbb << 5) : fbb;
+    const uint32_t physical = poff ? (fbb << 5) : fbb;
+    return PhysicalToEffective(physical);
 }
 
 uint32_t VideoInterface::XfbAddressBottom() const {
     const uint32_t packed = Read32(Base + 0x24);
     const uint32_t fbb = packed & 0x00FFFFFFu;
     const bool poff = (packed & (1u << 28)) != 0;
-    return poff ? (fbb << 5) : fbb;
+    const uint32_t physical = poff ? (fbb << 5) : fbb;
+    return PhysicalToEffective(physical);
 }
 
 XfbInfo VideoInterface::CurrentXfb() const {
+    // HSCALEW: WPL is the displayed framebuffer width in 16-pixel units and
+    // STD is the external framebuffer stride in 16-pixel units.
     const uint16_t picture = registers_[0x48 / 2];
     const uint16_t vertical = registers_[0x00 / 2];
 
-    const uint32_t width_words = (picture >> 8) & 0x7Fu;
-    const uint32_t stride_words = picture & 0xFFu;
-    const uint32_t active_lines = (vertical >> 4) & 0x3FFu;
+    const uint32_t width_pixels =
+        ((picture >> 8) & 0x7Fu) * 16u;
+    const uint32_t stride_bytes =
+        (picture & 0x7Fu) * 32u;
+    const uint32_t active_lines =
+        (vertical >> 4) & 0x3FFu;
 
     return {
         XfbAddressTop(),
-        width_words * 16,
-        stride_words * 32,
+        width_pixels,
+        stride_bytes,
         active_lines
     };
 }
