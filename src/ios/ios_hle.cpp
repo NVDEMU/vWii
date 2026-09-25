@@ -136,11 +136,19 @@ uint32_t IOSHLE::Read(uint32_t fd, const std::array<uint32_t, 5>& args) {
     const uint32_t size = args[1];
 
     if (fd == FD_DI && disc_) {
-        if (!disc_->Read(fds_[fd].position, nullptr, 0))
+        if (size == 0)
+            return 0;
+
+        std::vector<uint8_t> data(size);
+        if (!disc_->Read(fds_[fd].position, data.data(), data.size()))
             return ErrorNoSuchFile;
+
+        memory_.WriteBlock(address, data);
+        fds_[fd].position += size;
+        return size;
     }
 
-    return 0;
+    return ErrorNoSuchDevice;
 }
 
 uint32_t IOSHLE::Write(uint32_t fd, const std::array<uint32_t, 5>& args) {
@@ -268,8 +276,6 @@ void IOSHLE::WriteResult(uint32_t request_address, uint32_t result) {
 
 void IOSHLE::CompleteRequest(uint32_t request_address) {
     memory_.Hollywood().Write32(IPC_ARMMSG, request_address);
-    const uint32_t control = memory_.Hollywood().Read32(IPC_PPCCTRL);
-
     memory_.Hollywood().CompleteIpcReply();
 }
 
