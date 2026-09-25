@@ -154,7 +154,7 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
                 continue;
             }
 
-            if (scancode == SDL_SCANCODE_F6) {
+            if (impl_->settings_open && scancode == SDL_SCANCODE_F6) {
                 impl_->updater.OpenLatest();
                 continue;
             }
@@ -343,7 +343,7 @@ void Frontend::RenderSettings() {
             impl_->renderer,
             56.0f,
             footer_y - 25.0f,
-            "NIGHTLY UPDATE AVAILABLE - PRESS F6 TO DOWNLOAD");
+            "NIGHTLY UPDATE AVAILABLE - F12 SETTINGS, THEN F6 TO DOWNLOAD");
     }
 
     if (impl_->remap_waiting) {
