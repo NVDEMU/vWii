@@ -241,6 +241,34 @@ void Memory::Write32(uint32_t address, uint32_t value) {
     Write8(address + 3, static_cast<uint8_t>(value));
 }
 
+void Memory::ReadBlock(uint32_t address, std::span<uint8_t> data) const {
+    std::size_t read = 0;
+
+    while (read < data.size()) {
+        const uint32_t current = address + static_cast<uint32_t>(read);
+
+        if (IsHollywoodRegister(current)) {
+            data[read] = Read8(current);
+            ++read;
+            continue;
+        }
+
+        if (IsPeripheralRegister(current)) {
+            data[read] = Read8(current);
+            ++read;
+            continue;
+        }
+
+        const auto [base, offset] = Translate(current);
+        const std::size_t available = RegionRemaining(current);
+        const std::size_t chunk =
+            std::min(data.size() - read, available);
+
+        std::memcpy(data.data() + read, base + offset, chunk);
+        read += chunk;
+    }
+}
+
 void Memory::WriteBlock(uint32_t address, std::span<const uint8_t> data) {
     std::size_t written = 0;
 
