@@ -47,6 +47,7 @@ public:
     [[nodiscard]] std::string ConsumeDroppedFile();
     [[nodiscard]] std::string ConsumeLaunchFile();
     [[nodiscard]] uint64_t InstructionBudget() const;
+    void SetStatusMessage(std::string message);
     void Present(const Status& status, const memory::Memory* memory = nullptr);
 
 private:
