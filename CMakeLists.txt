@@ -24,6 +24,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/facebook/zstd.git
     GIT_TAG v1.5.7
     GIT_SHALLOW TRUE
+    SOURCE_SUBDIR build/cmake
 )
 
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -34,7 +35,7 @@ set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG release-3.2.0
+    GIT_TAG release-3.4.16
     GIT_SHALLOW TRUE
 )
 
