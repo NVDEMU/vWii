@@ -3,6 +3,7 @@
 #include "memory/memory.h"
 #include "input/wiimote_keyboard.h"
 #include "frontend/keyboard_bindings.h"
+#include "frontend/update_checker.h"
 
 #include <SDL3/SDL.h>
 
@@ -47,6 +48,7 @@ struct Frontend::Impl {
     std::string dropped_file;
 
     KeyboardBindings keyboard_bindings;
+    UpdateChecker updater;
     bool settings_open{};
     bool remap_waiting{};
     std::size_t selected_binding{};
@@ -84,6 +86,7 @@ bool Frontend::Initialize(const char* title, int width, int height) {
     }
 
     impl_->keyboard_bindings.Load();
+    impl_->updater.Start();
     return true;
 }
 
@@ -148,6 +151,11 @@ bool Frontend::PumpEvents(input::WiiRemoteKeyboard* wiimote,
                 impl_->remap_waiting = false;
                 if (impl_->settings_open)
                     impl_->keyboard_bindings.ReleaseAll(wiimote);
+                continue;
+            }
+
+            if (scancode == SDL_SCANCODE_F6) {
+                impl_->updater.OpenLatest();
                 continue;
             }
 
@@ -281,7 +289,7 @@ void Frontend::RenderSettings() {
         impl_->renderer,
         56.0f,
         96.0f,
-        "UP/DOWN select  PgUp/PgDn page  ENTER remap  DELETE clear  R reset  F5 reset all  F12 close");
+        "UP/DOWN select  PgUp/PgDn page  ENTER remap  DELETE clear  R reset  F5 reset all  F6 download nightly  F12 close");
 
     for (std::size_t i = first; i < last; ++i) {
         const float y = 120.0f +
@@ -319,6 +327,24 @@ void Frontend::RenderSettings() {
         static_cast<unsigned>(first + 1),
         static_cast<unsigned>(last),
         static_cast<unsigned>(entries.size()));
+
+    const auto update = impl_->updater.GetResult();
+    if (update.state == UpdateChecker::State::Available) {
+        SDL_SetRenderDrawColor(impl_->renderer, 20, 105, 70, 255);
+        const SDL_FRect update_box{
+            48.0f,
+            footer_y - 28.0f,
+            static_cast<float>(width > 96 ? width - 96 : 1),
+            20.0f
+        };
+        SDL_RenderFillRect(impl_->renderer, &update_box);
+        SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+        SDL_RenderDebugText(
+            impl_->renderer,
+            56.0f,
+            footer_y - 25.0f,
+            "NIGHTLY UPDATE AVAILABLE - PRESS F6 TO DOWNLOAD");
+    }
 
     if (impl_->remap_waiting) {
         SDL_SetRenderDrawColor(impl_->renderer, 255, 220, 100, 255);
@@ -488,51 +514,112 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
         }
     }
 
-    // Fallback status surface until a title produces a usable XFB.
-    SDL_SetRenderDrawColor(impl_->renderer, 35, 39, 48, 255);
+    // Full diagnostic/home surface until a title produces a valid XFB.
+    SDL_SetRenderDrawColor(impl_->renderer, 11, 16, 28, 255);
+    SDL_RenderClear(impl_->renderer);
 
-    const SDL_FRect panel{
+    const SDL_FRect header{
+        0.0f, 0.0f,
+        static_cast<float>(window_width),
+        82.0f
+    };
+    SDL_SetRenderDrawColor(impl_->renderer, 31, 71, 124, 255);
+    SDL_RenderFillRect(impl_->renderer, &header);
+
+    SDL_SetRenderDrawColor(impl_->renderer, 42, 50, 66, 255);
+    const SDL_FRect main_card{
+        28.0f,
+        108.0f,
+        static_cast<float>(window_width > 56 ? window_width - 56 : 1),
+        static_cast<float>(window_height > 150 ? window_height - 150 : 1)
+    };
+    SDL_RenderFillRect(impl_->renderer, &main_card);
+
+    SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+    SDL_RenderDebugText(impl_->renderer, 32.0f, 26.0f, "vWii");
+    SDL_RenderDebugText(
+        impl_->renderer,
         32.0f,
-        32.0f,
-        static_cast<float>(window_width > 64 ? window_width - 64 : 1),
-        128.0f
+        52.0f,
+        status.loaded ? "GAME LOADED - WAITING FOR VIDEO OUTPUT"
+                      : "READY - DROP A WII RVZ FILE INTO THIS WINDOW");
+
+    const SDL_FRect preview{
+        52.0f,
+        146.0f,
+        static_cast<float>(window_width > 104 ? window_width - 104 : 1),
+        static_cast<float>(window_height > 300 ? window_height - 260 : 120)
     };
 
-    SDL_RenderFillRect(impl_->renderer, &panel);
+    SDL_SetRenderDrawColor(impl_->renderer, 18, 24, 36, 255);
+    SDL_RenderFillRect(impl_->renderer, &preview);
+
+    // Draw a centered, visible test pattern rather than a single progress line.
+    const float preview_w = preview.w;
+    const float preview_h = preview.h;
+    SDL_SetRenderDrawColor(impl_->renderer, 42, 85, 120, 255);
+    SDL_RenderFillRect(
+        impl_->renderer,
+        new SDL_FRect{preview.x, preview.y, preview_w, preview_h * 0.55f});
+    SDL_SetRenderDrawColor(impl_->renderer, 60, 62, 70, 255);
+    SDL_RenderFillRect(
+        impl_->renderer,
+        new SDL_FRect{preview.x, preview.y + preview_h * 0.55f,
+                      preview_w, preview_h * 0.45f});
+
+    SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+    SDL_RenderDebugText(
+        impl_->renderer,
+        preview.x + 24.0f,
+        preview.y + 24.0f,
+        status.loaded
+            ? "PPC is running, but no valid XFB has been produced yet."
+            : "No game is loaded.");
+    SDL_RenderDebugText(
+        impl_->renderer,
+        preview.x + 24.0f,
+        preview.y + 48.0f,
+        "F12  Settings       F6  Download nightly       ESC  Quit");
 
     const uint32_t pc = status.pc;
-    const int bar_width = window_width > 80 ? window_width - 80 : 1;
+    const int bar_width = window_width > 120 ? window_width - 120 : 1;
     const int progress = static_cast<int>(
         (static_cast<uint64_t>(pc & 0x00FFFFFFu) *
          static_cast<uint64_t>(bar_width)) /
         0x01000000u);
 
-    SDL_SetRenderDrawColor(impl_->renderer, 75, 145, 220, 255);
-
+    SDL_SetRenderDrawColor(impl_->renderer, 74, 145, 220, 255);
     const SDL_FRect pc_bar{
-        40.0f,
-        80.0f,
+        60.0f,
+        static_cast<float>(window_height > 72 ? window_height - 58 : 30),
         static_cast<float>(progress > 0 ? progress : 1),
-        16.0f
+        10.0f
     };
-
     SDL_RenderFillRect(impl_->renderer, &pc_bar);
 
-    SDL_SetRenderDrawColor(
-        impl_->renderer,
-        status.halted ? 220 : 70,
-        status.halted ? 65 : 200,
-        status.loaded ? 80 : 70,
-        255);
+    const auto update = impl_->updater.GetResult();
+    SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
+    switch (update.state) {
+    case UpdateChecker::State::Checking:
+        SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
+                            "Checking nightly release...");
+        break;
+    case UpdateChecker::State::Available:
+        SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
+                            "NIGHTLY UPDATE AVAILABLE - PRESS F6 TO DOWNLOAD");
+        break;
+    case UpdateChecker::State::Current:
+        SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
+                            "Nightly build is up to date.");
+        break;
+    case UpdateChecker::State::Unavailable:
+        SDL_RenderDebugText(impl_->renderer, 60.0f, 86.0f,
+                            "Nightly update check unavailable.");
+        break;
+    case UpdateChecker::State::Idle:
+        break;
+    }
 
-    const SDL_FRect state_bar{
-        40.0f,
-        120.0f,
-        static_cast<float>(bar_width > 1 ? bar_width : 1),
-        12.0f
-    };
-
-    SDL_RenderFillRect(impl_->renderer, &state_bar);
     RenderSettings();
     SDL_RenderPresent(impl_->renderer);
 }
