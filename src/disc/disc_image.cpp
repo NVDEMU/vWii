@@ -201,7 +201,9 @@ bool DiscImage::Open(const std::string& path) {
     if (!OpenRvz()) {
         if (info_.error.empty())
             info_.error = "Invalid or unsupported RVZ image";
+        const std::string error = info_.error;
         Close();
+        info_.error = error;
         return false;
     }
 
