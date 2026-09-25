@@ -557,15 +557,18 @@ void Frontend::Present(const Status& status, const memory::Memory* memory) {
     // Draw a centered, visible test pattern rather than a single progress line.
     const float preview_w = preview.w;
     const float preview_h = preview.h;
+    const SDL_FRect preview_top{
+        preview.x, preview.y, preview_w, preview_h * 0.55f};
+    const SDL_FRect preview_bottom{
+        preview.x,
+        preview.y + preview_h * 0.55f,
+        preview_w,
+        preview_h * 0.45f
+    };
     SDL_SetRenderDrawColor(impl_->renderer, 42, 85, 120, 255);
-    SDL_RenderFillRect(
-        impl_->renderer,
-        new SDL_FRect{preview.x, preview.y, preview_w, preview_h * 0.55f});
+    SDL_RenderFillRect(impl_->renderer, &preview_top);
     SDL_SetRenderDrawColor(impl_->renderer, 60, 62, 70, 255);
-    SDL_RenderFillRect(
-        impl_->renderer,
-        new SDL_FRect{preview.x, preview.y + preview_h * 0.55f,
-                      preview_w, preview_h * 0.45f});
+    SDL_RenderFillRect(impl_->renderer, &preview_bottom);
 
     SDL_SetRenderDrawColor(impl_->renderer, 255, 255, 255, 255);
     SDL_RenderDebugText(
