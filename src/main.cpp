@@ -93,8 +93,37 @@ int main(int argc, char** argv) {
                 emulator.RunForInstructions(instructions);
                 std::cout << "Executed " << instructions
                           << " PowerPC instructions.\n";
+                return 0;
             }
 
+            vwii::frontend::Frontend frontend;
+            if (!frontend.Initialize("vWii", 960, 720)) {
+                std::cerr << "Failed to initialize the vWii frontend.\n";
+                return 1;
+            }
+
+            vwii::frontend::Status status;
+            status.game_id = result.disc.game_id;
+            status.loaded = true;
+
+            uint64_t instructions = 0;
+            while (frontend.PumpEvents()) {
+                constexpr uint64_t InstructionsPerFrame = 5000;
+                if (!emulator.CPU().Halted()) {
+                    emulator.RunForInstructions(InstructionsPerFrame);
+                    instructions += InstructionsPerFrame;
+                }
+
+                status.pc = emulator.CPU().GetPC();
+                status.instructions = instructions;
+                status.halted = emulator.CPU().Halted();
+
+                frontend.Present(status);
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
+
+            frontend.Shutdown();
+            emulator.Shutdown();
             return 0;
         }
 
