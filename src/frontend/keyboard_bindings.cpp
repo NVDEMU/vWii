@@ -9,8 +9,6 @@ namespace {
 
 std::vector<KeyboardBinding> DefaultBindings() {
     using input::Key;
-    using SDL = SDL_Scancode;
-
     return {
         {Key::DpadUp, "Wii Remote D-pad Up", SDL_SCANCODE_UP, SDL_SCANCODE_UP},
         {Key::DpadDown, "Wii Remote D-pad Down", SDL_SCANCODE_DOWN, SDL_SCANCODE_DOWN},
@@ -143,12 +141,12 @@ KeyboardBindings::KeyboardBindings()
 }
 
 void KeyboardBindings::Load() {
-    const char* pref = SDL_GetPrefPath("NVDEMU", "vWii");
+    char* pref = SDL_GetPrefPath("NVDEMU", "vWii");
     if (!pref)
         return;
 
     config_path_ = std::string(pref) + "keyboard.cfg";
-    SDL_free(const_cast<char*>(pref));
+    SDL_free(pref);
 
     std::ifstream file(config_path_);
     if (!file)
