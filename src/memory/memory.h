@@ -32,6 +32,7 @@ public:
     void Write8(uint32_t address, uint8_t value);
     void Write16(uint32_t address, uint16_t value);
     void Write32(uint32_t address, uint32_t value);
+    void ReadBlock(uint32_t address, std::span<uint8_t> data) const;
     void WriteBlock(uint32_t address, std::span<const uint8_t> data);
     void Fill(uint32_t address, std::size_t size, uint8_t value);
 
