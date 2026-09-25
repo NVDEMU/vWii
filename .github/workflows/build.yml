@@ -40,3 +40,39 @@ jobs:
       - name: Smoke test executable (macOS)
         if: runner.os == 'macOS'
         run: ./build/vwii.app/Contents/MacOS/vwii --self-test
+
+      - name: Package Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item build\Release\vwii.exe dist\vwii.exe
+          Compress-Archive -Path dist\vwii.exe -DestinationPath "vWii-$env:GITHUB_SHA-Windows-x64.zip"
+
+      - name: Upload Windows release artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vWii-Windows-x64
+          path: vWii-${{ github.sha }}-Windows-x64.zip
+          if-no-files-found: error
+
+      - name: Package macOS build
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          test -d build/vwii.app
+          rm -rf dist dmg-root
+          mkdir -p dist dmg-root
+          cp -R build/vwii.app dist/vWii.app
+          codesign --force --deep --sign - dist/vWii.app
+          cp -R dist/vWii.app dmg-root/vWii.app
+          hdiutil create             -volname "vWii"             -srcfolder dmg-root             -ov             -format UDZO             "vWii-$GITHUB_SHA-macOS.dmg"
+
+      - name: Upload macOS release artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vWii-macOS
+          path: vWii-${{ github.sha }}-macOS.dmg
+          if-no-files-found: error
