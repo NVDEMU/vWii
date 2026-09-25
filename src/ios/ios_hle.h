@@ -54,7 +54,7 @@ private:
     uint32_t Ioctl(uint32_t fd, const std::array<uint32_t, 5>& args);
     uint32_t IoctlV(uint32_t fd, const std::array<uint32_t, 5>& args);
 
-    uint32_t OpenDevice(const std::string& path);
+    uint32_t OpenDevice(const std::string& path, uint32_t mode);
     uint32_t HandleDI(uint32_t ioctl,
                       uint32_t in_address, uint32_t in_size,
                       uint32_t out_address, uint32_t out_size);
