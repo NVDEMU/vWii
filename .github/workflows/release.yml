@@ -4,12 +4,64 @@ on:
   push:
     tags:
       - "v*"
+  workflow_run:
+    workflows:
+      - "Build vWii"
+    types:
+      - completed
+    branches:
+      - main
+
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: vwii-release-${github.event_name}-${github.event.workflow_run.head_sha}
+  cancel-in-progress: true
 
 jobs:
+  nightly-release:
+    name: Publish nightly build
+    if: ${github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vWii-Windows-x64
+          path: release-assets
+          github-token: ${github.token}
+          repository: ${github.repository}
+          run-id: ${github.event.workflow_run.id}
+
+      - name: Download macOS build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vWii-macOS
+          path: release-assets
+          github-token: ${github.token}
+          repository: ${github.repository}
+          run-id: ${github.event.workflow_run.id}
+
+      - name: Publish nightly GitHub Release
+        env:
+          GH_TOKEN: ${github.token}
+          RELEASE_TAG: nightly
+          SOURCE_SHA: ${github.event.workflow_run.head_sha}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --clobber               release-assets/*
+          else
+            gh release create "$RELEASE_TAG"               --repo "$GITHUB_REPOSITORY"               --prerelease               --title "vWii Nightly"               --notes "Automatic build from commit $SOURCE_SHA."               release-assets/*
+          fi
+
   windows:
-    name: Windows build
+    name: Windows tagged release build
+    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
     runs-on: windows-latest
 
     steps:
@@ -33,16 +85,18 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item build\Release\vwii.exe dist\vwii.exe
-          Compress-Archive -Path dist\vwii.exe -DestinationPath "vWii-${env:GITHUB_REF_NAME}-Windows-x64.zip"
+          Compress-Archive -Path dist\vwii.exe -DestinationPath "vWii-$${env:GITHUB_REF_NAME}-Windows-x64.zip"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vWii-Windows-x64
-          path: vWii-${{ github.ref_name }}-Windows-x64.zip
+          name: vWii-Windows-x64-tagged
+          path: vWii-${github.ref_name}-Windows-x64.zip
+          if-no-files-found: error
 
   macos:
-    name: macOS build
+    name: macOS tagged release build
+    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
     runs-on: macos-latest
 
     steps:
@@ -65,36 +119,27 @@ jobs:
         run: |
           set -euo pipefail
           test -d build/vwii.app
-          mkdir -p dist
-          cp -R build/vwii.app "dist/vWii.app"
-          codesign --force --deep --sign - "dist/vWii.app"
-
-      - name: Prepare DMG contents
-        run: |
-          set -euo pipefail
-          rm -rf dmg-root
-          mkdir -p dmg-root
-          cp -R "dist/vWii.app" "dmg-root/vWii.app"
+          rm -rf dist dmg-root
+          mkdir -p dist dmg-root
+          cp -R build/vwii.app dist/vWii.app
+          codesign --force --deep --sign - dist/vWii.app
+          cp -R dist/vWii.app dmg-root/vWii.app
 
       - name: Create DMG
         run: |
           set -euo pipefail
-          hdiutil create \
-            -volname "vWii" \
-            -srcfolder "dmg-root" \
-            -ov \
-            -format UDZO \
-            "vWii-${GITHUB_REF_NAME}-macOS.dmg"
+          hdiutil create             -volname "vWii"             -srcfolder dmg-root             -ov             -format UDZO             "vWii-$${GITHUB_REF_NAME}-macOS.dmg"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vWii-macOS
-          path: vWii-${{ github.ref_name }}-macOS.dmg
+          name: vWii-macOS-tagged
+          path: vWii-${github.ref_name}-macOS.dmg
+          if-no-files-found: error
 
   release:
-    name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish tagged GitHub Release
+    if: ${github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')}
     needs:
       - windows
       - macos
@@ -104,28 +149,22 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: vWii-Windows-x64
+          name: vWii-Windows-x64-tagged
           path: release-assets
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
-          name: vWii-macOS
+          name: vWii-macOS-tagged
           path: release-assets
 
-      - name: Publish release
+      - name: Publish GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${github.token}
         run: |
           set -euo pipefail
-          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --clobber \
-              release-assets/*
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME"               --repo "$GITHUB_REPOSITORY"               --clobber               release-assets/*
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --generate-notes \
-              release-assets/*
+            gh release create "$GITHUB_REF_NAME"               --repo "$GITHUB_REPOSITORY"               --generate-notes               release-assets/*
           fi
