@@ -21,9 +21,7 @@ std::string Lowercase(std::string value) {
 
 } // namespace
 
-GameLibrary::GameLibrary() {
-    Load();
-}
+GameLibrary::GameLibrary() = default;
 
 std::filesystem::path GameLibrary::ConfigDirectory() const {
     char* pref = SDL_GetPrefPath("NVDEMU", "vWii");
