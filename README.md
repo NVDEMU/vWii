@@ -17,7 +17,8 @@ Current milestones include:
 - RVZ decrypted partition-data access
 - Main DOL extraction from Wii game partitions
 - DOL loading into emulated memory
-- Tag-based GitHub Releases
+- Automatic nightly releases after successful main-branch builds
+- Tag-based GitHub Releases for stable versions
 - Windows x64 ZIP release
 - macOS .app packaged inside a DMG
 - SDL3 cross-platform GUI with RVZ drag-and-drop
@@ -117,6 +118,8 @@ Use game dumps, system software, and other copyrighted material only when you ha
 ## Keyboard Wii Remote controls
 
 The GUI has a built-in virtual Wii Remote driven entirely by the keyboard. SDL3 reports physical scancodes, so the default layout is independent of the user's keyboard language/layout. citeturn422338search0turn422338search4
+
+Press F12 in the GUI to open **Settings**. The Keyboard Controls screen lets you select any binding, press Enter, then press the new key to remap it. Delete clears a binding, R restores the selected action's default, and F5 restores all defaults. Bindings are saved automatically in vWii's per-user preferences so they survive restarts. SDL provides this application-specific preference location through SDL_GetPrefPath(). citeturn738260search0
 
 Core Wii Remote: Arrow keys = D-pad, Space = A, Right Ctrl = B, Z = 1, X = 2, = = Plus, - = Minus, Backspace = Home.
 
