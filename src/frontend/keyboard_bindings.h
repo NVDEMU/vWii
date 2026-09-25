@@ -4,6 +4,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
