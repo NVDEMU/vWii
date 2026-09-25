@@ -103,7 +103,7 @@ bool IOSHLE::ReadRequest(uint32_t request_address, uint32_t& command,
     return true;
 }
 
-uint32_t IOSHLE::OpenDevice(const std::string& path) {
+uint32_t IOSHLE::OpenDevice(const std::string& path, uint32_t mode) {
     if (path == "/dev/di")
         return FD_DI;
     if (path == "/dev/fs")
@@ -114,15 +114,16 @@ uint32_t IOSHLE::OpenDevice(const std::string& path) {
         return FD_STM;
 
     if (!path.empty() && path.front() == '/' && nand_)
-        return static_cast<uint32_t>(nand_->Open(path, 1));
+        return static_cast<uint32_t>(nand_->Open(path, mode));
 
     return ErrorNoSuchDevice;
 }
 
 uint32_t IOSHLE::Open(const std::array<uint32_t, 5>& args) {
     const std::string path = ReadCString(memory_, args[0]);
+    const uint32_t mode = args[1];
 
-    const uint32_t fd = OpenDevice(path);
+    uint32_t fd = OpenDevice(path, mode);
     if (fd < fds_.size())
         fds_[fd].position = 0;
     return fd;
