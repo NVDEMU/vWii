@@ -66,6 +66,8 @@ private:
     uint32_t srr1_{};
     uint32_t fpscr_{};
     uint64_t timebase_{};
+    uint32_t reservation_address_{};
+    bool reservation_valid_{};
 
     bool halted_{};
 };
